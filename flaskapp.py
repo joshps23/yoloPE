@@ -51,11 +51,23 @@ def generate_frames_web(path_x):
         yield (b'--frame\r\n'
                     b'Content-Type: image/jpeg\r\n\r\n' + frame +b'\r\n')
 
-@app.route('/', methods=['GET','POST'])
+# @app.route('/', methods=['GET','POST'])
 @app.route('/home', methods=['GET','POST'])
+# def home():
+#     session.clear()
+#     return render_template('index.html')
 def home():
     session.clear()
-    return render_template('index.html')
+    form = UploadFileForm()
+    if form.validate_on_submit():
+        # Our uploaded video file path is saved here
+        file = form.file.data
+        file.save(os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'],
+                               secure_filename(file.filename)))  # Then save the file
+        # Use session storage to save video file path
+        session['video_path'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'],
+                                             secure_filename(file.filename))
+    return render_template('videoprojectnew.html', form=form)
 # Rendering the Webcam Rage
 #Now lets make a Webcam page for the application
 #Use 'app.route()' method, to render the Webcam page at "/webcam"
@@ -64,9 +76,11 @@ def home():
 def webcam():
     session.clear()
     return render_template('ui.html')
-@app.route('/FrontPage', methods=['GET','POST'])
+# @app.route('/FrontPage', methods=['GET','POST'])
+@app.route('/', methods=['GET','POST'])
 def front():
     # Upload File Form: Create an instance for the Upload File Form
+    
     form = UploadFileForm()
     if form.validate_on_submit():
         # Our uploaded video file path is saved here
