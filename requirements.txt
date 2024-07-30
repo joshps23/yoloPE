@@ -44,6 +44,7 @@ itsdangerous==2.2.0
 jedi==0.19.1
 Jinja2==3.1.4
 kiwisolver==1.4.5
+lapx==0.5.9.post1
 Markdown==3.6
 MarkupSafe==2.1.5
 matplotlib==3.9.0
@@ -95,6 +96,7 @@ regex==2024.5.15
 requests==2.32.3
 scipy==1.14.0
 seaborn==0.13.2
+shapely==2.0.5
 six==1.16.0
 smmap==5.0.1
 soupsieve==2.5
