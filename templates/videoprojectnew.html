@@ -5,7 +5,7 @@
     <meta name="viewport"
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Cantonment Primary School Heatmap</title>
+    <title>CPS Coach Pro</title>
     <style>
         body{
             color:white;
@@ -99,12 +99,25 @@
         <button type="submit" name="favorite" value="x" class="btnCustom">
             Submit
         </button>
+
+      <button onclick="location.href='/clearsession'" type="button" class="btnCustom">
+        Clear 
+      </button>
       </div>
       </form>
     </div>
 
   </div>
     </section>
+    <script>
+      let resetBtn = document.getElementById('resetBtn')
+      resetBtn.addEventListener("click", reset);
+
+function reset() {
+  sessionStorage.clear();
+  console.log('reset button pressed')
+}
+    </script>
 
 </body>
 </html>

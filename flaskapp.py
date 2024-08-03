@@ -1,4 +1,4 @@
-from flask import Flask, render_template, Response,jsonify,request,session
+from flask import Flask, render_template, Response,jsonify,request,session,redirect
 
 #FlaskForm--> it is required to receive input from the user
 # Whether uploading a video file  to our object detection model
@@ -25,6 +25,31 @@ app.config['UPLOAD_FOLDER'] = 'static/files'
 
 
 #Use FlaskForm to get input video file  from user
+class ThreadedCamera(object):
+    def __init__(self, src=0):
+        self.capture = cv2.VideoCapture(src)
+        self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 2)
+       
+        # FPS = 1/X
+        # X = desired FPS
+        self.FPS = 1/30
+        self.FPS_MS = int(self.FPS * 1000)
+        
+        # Start frame retrieval thread
+        self.thread = Thread(target=self.update, args=())
+        self.thread.daemon = True
+        self.thread.start()
+        
+    def update(self):
+        while True:
+            if self.capture.isOpened():
+                (self.status, self.frame) = self.capture.read()
+            time.sleep(self.FPS)
+            
+    def show_frame(self):
+        cv2.imshow('frame', self.frame)
+        cv2.waitKey(self.FPS_MS)
+
 class UploadFileForm(FlaskForm):
     #We store the uploaded video file path in the FileField in the variable file
     #We have added validators to make sure the user inputs the video in the valid format  and user does upload the
@@ -84,6 +109,7 @@ def front():
     form = UploadFileForm()
     if form.validate_on_submit():
         # Our uploaded video file path is saved here
+
         file = form.file.data
         file.save(os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'],
                                secure_filename(file.filename)))  # Then save the file
@@ -102,5 +128,11 @@ def webapp():
     #return Response(generate_frames(path_x = session.get('video_path', None),conf_=round(float(session.get('conf_', None))/100,2)),mimetype='multipart/x-mixed-replace; boundary=frame')
     return Response(generate_frames_web(path_x=0), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route("/clearsession")
+def clear():
+    session.clear()
+    return redirect("/")
+
 if __name__ == "__main__":
+
     app.run(debug=True,host="0.0.0.0",port=5000)
