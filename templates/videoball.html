@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>CPS Coach Pro</title>
+    <style>
+        body{
+            color:white;
+            margin:0px;
+            padding:0px;
+        }
+        header.feature-box.top{
+        background-color:black;
+        height:50px;
+        margin:0px;
+        padding:20px;
+        text-align:center;
+        }
+        header.feature-box.second{
+        background-color:blue;
+        height:50px;
+        text-align:center;
+        margin-top:-25px;
+        }
+        .features{
+          background-color:black;
+          width: 900px;
+          height: 700px;
+          border-radius: 35px;
+          object-fit: contain;
+          margin:20px;
+        }
+        section.col-sm{
+          background-color:black;
+          width: 100vw;
+          height: 100vh;
+          border-radius: 35px;
+          object-fit: contain;
+          margin:10px;
+        }
+
+        img{
+          width: 99vw;
+          height: 90vh;
+          border-radius: 35px;
+          object-fit: contain;
+          margin:10px;
+        }
+
+        .new{
+        color:black;
+        margin:0px;
+        padding:10px;
+        background-color:green;
+        margin:0px;
+        margin-top:-10px;
+        }
+
+        ul{
+        list-style:none;
+        padding:0px;}
+        li{
+        display:inline-block;
+        background-color:gray;
+        border-radius:10px;
+        padding:10px;
+        margin:10px;
+        }
+        li:hover{
+        background-color:red;
+        margin:10px;
+        }
+
+    </style>
+</head>
+<body>
+<header class="feature-box top">
+  <nav>
+    <ul>
+    <li><a href="/">Space</a></li>
+    <li><a href="/ball">Ball</a></li>
+    <!-- <li><a href="/webcam">LiveWebcam</a></li> -->
+    </ul>
+</nav>
+    <h1><strong>Cantonment Primary School Heatmap</strong></h1>
+
+</header>
+<!-- <header class="feature-box second">
+     <h1><strong>Output Video</strong></h1>
+</header> -->
+
+<section class="col-sm " >
+          <img src="{{ url_for('videoball') }}"   alt="Upload video">
+
+  </section>
+<section>
+    <div class="new" >
+      <form method = 'POST' enctype="multipart/form-data" style="align-content: center; text-align: center;display: flex;">
+        {{form.hidden_tag()}}
+        {{form.file(class_="custom-file-input")}}
+
+        <div>
+        <button type="submit" name="favorite" value="x" class="btnCustom">
+            Submit
+        </button>
+
+      <button onclick="location.href='/clearball'" type="button" class="btnCustom">
+        Clear 
+      </button>
+      </div>
+      </form>
+    </div>
+
+  </div>
+    </section>
+    <script>
+      let resetBtn = document.getElementById('resetBtn')
+      resetBtn.addEventListener("click", reset);
+
+function reset() {
+  sessionStorage.clear();
+  console.log('reset button pressed')
+}
+    </script>
+
+</body>
+</html>

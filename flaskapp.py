@@ -58,8 +58,8 @@ class UploadFileForm(FlaskForm):
     submit = SubmitField("Run")
 
 
-def generate_frames(path_x = ''):
-    yolo_output = video_detection(path_x)
+def generate_frames(path_x = '', mode = ''):
+    yolo_output = video_detection(path_x,mode)
     for detection_ in yolo_output:
         ref,buffer=cv2.imencode('.jpg',detection_)
 
@@ -117,11 +117,29 @@ def front():
         session['video_path'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'],
                                              secure_filename(file.filename))
     return render_template('videoprojectnew.html', form=form)
+@app.route('/ball', methods=['GET','POST'])
+def ballform():
+    # Upload File Form: Create an instance for the Upload File Form
+    
+    form = UploadFileForm()
+    if form.validate_on_submit():
+        # Our uploaded video file path is saved here
+
+        file = form.file.data
+        file.save(os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'],
+                               secure_filename(file.filename)))  # Then save the file
+        # Use session storage to save video file path
+        session['video_path'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'],
+                                             secure_filename(file.filename))
+    return render_template('videoball.html', form=form)
 @app.route('/video')
 def video():
     #return Response(generate_frames(path_x='static/files/bikes.mp4'), mimetype='multipart/x-mixed-replace; boundary=frame')
-    return Response(generate_frames(path_x = session.get('video_path', None)),mimetype='multipart/x-mixed-replace; boundary=frame')
-
+    return Response(generate_frames(path_x = session.get('video_path', None), mode = "space"),mimetype='multipart/x-mixed-replace; boundary=frame')
+@app.route('/videoball')
+def videoball():
+    #return Response(generate_frames(path_x='static/files/bikes.mp4'), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(generate_frames(path_x = session.get('video_path', None), mode = "ball"),mimetype='multipart/x-mixed-replace; boundary=frame')
 # To display the Output Video on Webcam page
 @app.route('/webapp')
 def webapp():
@@ -132,6 +150,10 @@ def webapp():
 def clear():
     session.clear()
     return redirect("/")
+@app.route("/clearball")
+def clearball():
+    session.clear()
+    return redirect("/ball")
 
 if __name__ == "__main__":
 

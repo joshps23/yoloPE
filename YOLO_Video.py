@@ -1,17 +1,19 @@
 from ultralytics import YOLO, solutions
 
 import cv2
+import numpy as np
 import math
 import time
 
-def video_detection(path_x):
+def video_detection(path_x, mode):
     video_capture = path_x
     #Create a Webcam Object
     cap=cv2.VideoCapture(video_capture)
     cap.set(cv2.CAP_PROP_BUFFERSIZE, 2)
     fps_in = cap.get(cv2.CAP_PROP_FPS)
-    fps_out = 0.1
+    fps_out = 5
 
+    classes_for_heatmap = [0]
     index_in = -1
     index_out = -1
     fps = 1/100
@@ -20,32 +22,40 @@ def video_detection(path_x):
     frame_width=int(cap.get(3))
     frame_height=int(cap.get(4))
     #out=cv2.VideoWriter('output.avi', cv2.VideoWriter_fourcc('M', 'J', 'P','G'), 10, (frame_width, frame_height))
-    classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
-                "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
-                "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
-                "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat",
-                "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup",
-                "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli",
-                "carrot", "hot dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed",
-                "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell phone",
-                "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
-                "teddy bear", "hair drier", "toothbrush"
-                ]
+    if mode == "space":
+        model=YOLO("yolov8n.pt")
+        classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
+                    "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
+                    "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
+                    "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat",
+                    "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup",
+                    "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli",
+                    "carrot", "hot dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed",
+                    "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell phone",
+                    "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
+                    "teddy bear", "hair drier", "toothbrush"
+                    ]
+        class_to_detect = "person"
+    elif mode == "ball":
+        model=YOLO("ballDetectBestV2.pt")
+        classNames = ["ball"]
+        class_to_detect = "ball"
     
-    model=YOLO("yolov8n.pt")
     # classNames = ['ball']
     success, img = cap.read()
+
     h,w,c = img.shape
-    heatmap_obj=solutions.Heatmap(
-    heatmap_alpha=0.5,
-    # colormap=cv2.COLORMAP_PARULA,
-    imw=int(w),
-    imh=int(h),
-    view_img=False,
-    shape="circle",
-    classes_names=model.names,
-    decay_factor=0.99,
-    )
+    heatmap = np.zeros((int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))), dtype=np.float32)
+    # heatmap_obj=solutions.Heatmap(
+    # heatmap_alpha=0.5,
+    # # colormap=cv2.COLORMAP_PARULA,
+    # imw=int(w),
+    # imh=int(h),
+    # view_img=False,
+    # shape="rect",
+    # classes_names=model.names,
+    # decay_factor=0.99,
+    # )
     count=0
     while True:
         success_grab = cap.grab()
@@ -63,36 +73,31 @@ def video_detection(path_x):
 
 
             results=model(img,stream=True)
-            # for r in results:
-            #     boxes=r.boxes
-            #     for box in boxes:
-            #         x1,y1,x2,y2=box.xyxy[0]
-            #         x1,y1,x2,y2=int(x1), int(y1), int(x2), int(y2)
-            #         print(x1,y1,x2,y2)
-            #         conf=math.ceil((box.conf[0]*100))/100
-            #         cls=int(box.cls[0])
-            #         class_name=classNames[cls]
-            #         label=f'{class_name}{conf}'
-            #         t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=2)[0]
-            #         print(t_size)
-            #         c2 = x1 + t_size[0], y1 - t_size[1] - 3
-            #         if class_name == 'Dust Mask':
-            #             color=(0, 204, 255)
-            #         elif class_name == "Glove":
-            #             color = (222, 82, 175)
-            #         elif class_name == "Protective Helmet":
-            #             color = (0, 149, 255)
-            #         else:
-            #             color = (85,45,255)
-            #         if conf>0.5:
-            #             cv2.rectangle(img, (x1,y1), (x2,y2), color,3)
-            #             cv2.rectangle(img, (x1,y1), c2, color, -1, cv2.LINE_AA)  # filled
-            #             cv2.putText(img, label, (x1,y1-2),0, 1,[255,255,255], thickness=1,lineType=cv2.LINE_AA)
-            track=model.track(img,persist=True)
-            final_img=heatmap_obj.generate_heatmap(img,track)
-            img=final_img
+            for r in results:
+                boxes=r.boxes
+                for box in boxes:
+                    x1,y1,x2,y2=box.xyxy[0]
+                    x1,y1,x2,y2=int(x1), int(y1), int(x2), int(y2)
+                    center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
+                    # print(x1,y1,x2,y2)
+                    conf=math.ceil((box.conf[0]*100))/100
+                    cls=int(box.cls[0])
+                    class_name=classNames[cls]
+                    label=f'{class_name}{conf}'
+                    t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=2)[0]
+                    print(t_size)
+                    c2 = x1 + t_size[0], y1 - t_size[1] - 3
+                    if class_name == class_to_detect and conf > 0.5:
+                        heatmap[y2-30:y2, center_x-10:center_x+10] += 25
+            # track=model.track(img,persist=True,classes=classes_for_heatmap)
+            # final_img=heatmap_obj.generate_heatmap(img,track)
+            # img=final_img
             # time.sleep(fps)
-        yield img
+        normalized_heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
+        colored_map = cv2.applyColorMap(normalized_heatmap.astype(np.uint8), cv2.COLORMAP_HSV)
+
+        frame_with_heatmap = cv2.addWeighted(img, 0.5, colored_map, 0.5, 0)
+        yield frame_with_heatmap
         #out.write(img)
         #cv2.imshow("image", img)
         #if cv2.waitKey(1) & 0xFF==ord('1'):
