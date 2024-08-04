@@ -22,7 +22,7 @@ def video_detection(path_x, mode):
     frame_width=int(cap.get(3))
     frame_height=int(cap.get(4))
     label=f'Green pixels'
-    #out=cv2.VideoWriter('output.avi', cv2.VideoWriter_fourcc('M', 'J', 'P','G'), 10, (frame_width, frame_height))
+    out=cv2.VideoWriter('static/files/uploadoutput.mp4', cv2.VideoWriter_fourcc('M', 'J', 'P','G'), 10, (frame_width, frame_height))
     if mode == "space":
         model=YOLO("yolov8n.pt")
         classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
@@ -117,10 +117,11 @@ def video_detection(path_x, mode):
         elif class_to_detect == "ball":
             label = f'Ball Coverage: {count_green//1600}'
 
+        out.write(frame_with_heatmap)
         yield frame_with_heatmap
-        #out.write(img)
+        
         #cv2.imshow("image", img)
         #if cv2.waitKey(1) & 0xFF==ord('1'):
             #break
-    #out.release()
+    out.release()
 # cv2.destroyAllWindows()

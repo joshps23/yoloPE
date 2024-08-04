@@ -1,4 +1,5 @@
 from flask import Flask, render_template, Response,jsonify,request,session,redirect
+from dotenv import load_dotenv
 
 #FlaskForm--> it is required to receive input from the user
 # Whether uploading a video file  to our object detection model
@@ -19,6 +20,8 @@ import cv2
 #Video Detection is the Function which performs Object Detection on Input Video
 from YOLO_Video import video_detection
 app = Flask(__name__)
+
+load_dotenv()
 
 app.config['SECRET_KEY'] = os.environ["SECRET_KEY"]
 app.config['UPLOAD_FOLDER'] = 'static/files'
@@ -132,6 +135,14 @@ def ballform():
         session['video_path'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'],
                                              secure_filename(file.filename))
     return render_template('videoball.html', form=form)
+
+@app.route('/download')
+def downloadFile (filename):
+    #For windows you need to use drive name [ex: F:/Example.pdf]
+    path = "/Examples.pdf"
+    return send_file(path, as_attachment=True)
+
+
 @app.route('/video')
 def video():
     #return Response(generate_frames(path_x='static/files/bikes.mp4'), mimetype='multipart/x-mixed-replace; boundary=frame')
