@@ -115,7 +115,7 @@ def video_detection(path_x, mode):
         if class_to_detect == "person":
             label = f'Space Coverage: {space_green}'
         elif class_to_detect == "ball":
-            label = f'Ball Coverage: {count_green//1400}'
+            label = f'Ball Coverage: {count_green//1600}'
 
         yield frame_with_heatmap
         #out.write(img)
