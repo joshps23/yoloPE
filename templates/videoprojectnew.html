@@ -93,7 +93,7 @@
         .custom-file-input{
         display:inline-block;
         background-color:green;
-        border-radius:10px;
+        border-radius:0px;
         padding:0px;
         
         }
@@ -140,7 +140,7 @@
   </section>
 <section>
     <div class="new" >
-      <form method = 'POST' enctype="multipart/form-data" style="align-content: center; text-align: center;display: flex;">
+      <form method = 'POST' enctype="multipart/form-data">
         {{form.hidden_tag()}}
         {{form.file(class_="custom-file-input")}}
 
