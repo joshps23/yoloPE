@@ -8,15 +8,15 @@
     <title>CPS Coach Pro</title>
     <style>
         body{
-            color:white;
+            color:black;
             margin:0px;
             padding:0px;
         }
         header.feature-box.top{
-        background-color:black;
-        height:50px;
+        background-color:green;
+        height:9vh;
         margin:0px;
-        padding:20px;
+        padding:1px;
         text-align:center;
         }
         header.feature-box.second{
@@ -36,27 +36,29 @@
         section.col-sm{
           background-color:black;
           width: 100vw;
-          height: 100vh;
-          border-radius: 35px;
+          height: 83vh;
+          /* border-radius: 35px; */
           object-fit: contain;
-          margin:10px;
+          margin:0px;
         }
 
         img{
           width: 99vw;
-          height: 90vh;
+          height: 83vh;
           border-radius: 35px;
           object-fit: contain;
-          margin:10px;
+          margin:1px;
         }
 
         .new{
         color:black;
         margin:0px;
         padding:10px;
+        height: 6vh;
+        width: 100vw;
         background-color:green;
         margin:0px;
-        margin-top:-10px;
+        margin-top: 0px;
         }
 
         ul{
@@ -66,6 +68,7 @@
         display:inline-block;
         background-color:gray;
         border-radius:10px;
+        box-shadow: 2px 3px;
         padding:10px;
         margin:10px;
         }
@@ -73,7 +76,39 @@
         background-color:red;
         margin:10px;
         }
+        button{
+        /* display:inline-block; */
+        background-color:gray;
+        border-radius:10px;
+        padding:10px;
+        
+        }
 
+        .btnClear{
+        background-color: red;
+        text-align: center;
+        margin-left: 10vw;
+        
+        }
+        .custom-file-input{
+        display:inline-block;
+        background-color:green;
+        border-radius:10px;
+        padding:0px;
+        
+        }
+
+        .schlogo{
+          object-fit: contain;
+          float: right;
+          padding-right: 20px;
+        }
+
+        .btnSubmit{
+          margin-left: 40vw;
+          margin-right: 20px;
+          float: right;
+        }
     </style>
 </head>
 <body>
@@ -83,6 +118,7 @@
     <li><a href="/">Space</a></li>
     <li><a href="/ball">Ball</a></li>
     <!-- <li><a href="/webcam">LiveWebcam</a></li> -->
+    <img src="static/images/schlogo.png" class="schlogo" style="max-height: 6vh; max-width: 6vh;">
     </ul>
 </nav>
     <h1><strong>Cantonment Primary School Heatmap</strong></h1>
@@ -103,13 +139,13 @@
         {{form.file(class_="custom-file-input")}}
 
         <div>
-        <button type="submit" name="favorite" value="x" class="btnCustom">
+          <button onclick="location.href='/clearsession'" type="button" class="btnClear">
+            Clear 
+          </button>
+    
+          <button type="submit" name="favorite" value="x" class="btnSubmit">
             Submit
         </button>
-
-      <button onclick="location.href='/clearball'" type="button" class="btnCustom">
-        Clear 
-      </button>
       </div>
       </form>
     </div>

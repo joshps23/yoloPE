@@ -11,7 +11,7 @@ def video_detection(path_x, mode):
     cap=cv2.VideoCapture(video_capture)
     cap.set(cv2.CAP_PROP_BUFFERSIZE, 2)
     fps_in = cap.get(cv2.CAP_PROP_FPS)
-    fps_out = 5
+    fps_out = 25
 
     classes_for_heatmap = [0]
     index_in = -1
@@ -21,6 +21,7 @@ def video_detection(path_x, mode):
     # heatmap_obj = heatmap.Heatmap()
     frame_width=int(cap.get(3))
     frame_height=int(cap.get(4))
+    label=f'Green pixels'
     #out=cv2.VideoWriter('output.avi', cv2.VideoWriter_fourcc('M', 'J', 'P','G'), 10, (frame_width, frame_height))
     if mode == "space":
         model=YOLO("yolov8n.pt")
@@ -59,7 +60,9 @@ def video_detection(path_x, mode):
     count=0
     while True:
         success_grab = cap.grab()
-        if not success_grab: break
+        if not success_grab: 
+            print("finished running video")
+            return
         index_in += 1
 
         out_due = int(index_in/fps_in*fps_out)
@@ -79,24 +82,41 @@ def video_detection(path_x, mode):
                     x1,y1,x2,y2=box.xyxy[0]
                     x1,y1,x2,y2=int(x1), int(y1), int(x2), int(y2)
                     center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
-                    # print(x1,y1,x2,y2)
+                    
                     conf=math.ceil((box.conf[0]*100))/100
                     cls=int(box.cls[0])
                     class_name=classNames[cls]
-                    label=f'{class_name}{conf}'
-                    t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=2)[0]
-                    print(t_size)
+                    # label=f'{class_name}{conf}'
+                    t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=5)[0]
+                    # print(t_size)
                     c2 = x1 + t_size[0], y1 - t_size[1] - 3
                     if class_name == class_to_detect and conf > 0.5:
-                        heatmap[y2-30:y2, center_x-10:center_x+10] += 25
+                        if (class_to_detect == "person") and (y2-y1>200):
+                            print(f"person size: {y2-y1}")
+                            heatmap[y2-20:y2, center_x-10:center_x+10] += 20
+                        elif class_to_detect == "ball":
+                            heatmap[center_y-25:center_y+25, center_x-25:center_x+25] += 20
             # track=model.track(img,persist=True,classes=classes_for_heatmap)
             # final_img=heatmap_obj.generate_heatmap(img,track)
             # img=final_img
             # time.sleep(fps)
-        normalized_heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
-        colored_map = cv2.applyColorMap(normalized_heatmap.astype(np.uint8), cv2.COLORMAP_HSV)
+        cv2.putText(img, label, (100,100),cv2.FONT_HERSHEY_SIMPLEX, 2,[255,255,255], thickness=5,lineType=cv2.LINE_AA)
+        # normalized_heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
+        colored_map = cv2.applyColorMap(heatmap.astype(np.uint8), cv2.COLORMAP_HSV)
 
         frame_with_heatmap = cv2.addWeighted(img, 0.5, colored_map, 0.5, 0)
+        hsv = cv2.cvtColor(frame_with_heatmap, cv2.COLOR_BGR2HSV)
+        h, s, v = cv2.split(hsv)
+        lower = (20,100,100)
+        upper = (60,255,255)
+        mask = cv2.inRange(hsv, lower, upper)
+        count_green = np.count_nonzero(mask)
+        space_green = (count_green // 1300)
+        if class_to_detect == "person":
+            label = f'Space Coverage: {space_green}'
+        elif class_to_detect == "ball":
+            label = f'Ball Coverage: {count_green//1400}'
+
         yield frame_with_heatmap
         #out.write(img)
         #cv2.imshow("image", img)
