@@ -56,6 +56,7 @@
         padding:10px;
         height: 6vh;
         width: 100vw;
+        /* display: flex; */
         background-color:green;
         margin:0px;
         margin-top: 0px;
@@ -107,7 +108,13 @@
         .btnSubmit{
         display: block;
         margin: 0 auto;
+        
           background-color:blue;
+        }
+
+        .btnDownload{
+          display: block;
+        margin-left: 20px;
         }
 
         .image-cropper {
@@ -130,6 +137,10 @@
       </button>
     <li><a href="/">Space</a></li>
     <li><a href="/ball">Ball</a></li>
+    <li><a href="/download">Download</a></li>
+    <!-- <button onclick="location.href='/download'" type="button" class="btnDownload">
+      Download
+    </button> -->
     
       <img src="static/images/TransparentCircleLogo.png" class="schlogo" style="max-height: 7vh; max-width: 7vh; background-color: green;">
     
@@ -152,7 +163,7 @@
   </section>
 <section>
     <div class="new" >
-      <form method = 'POST' enctype="multipart/form-data">
+      <form method = 'POST' enctype="multipart/form-data" tyle="align-content: center; text-align: center;display: flex;">
         {{form.hidden_tag()}}
         {{form.file(class_="custom-file-input")}}
 
@@ -164,6 +175,7 @@
       <button type="submit" name="favorite" value="x" class="btnSubmit">
         Submit
     </button>
+
       </div>
       </form>
     </div>

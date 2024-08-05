@@ -1,17 +1,22 @@
-from ultralytics import YOLO, solutions
+from ultralytics import YOLO
 
 import cv2
 import numpy as np
 import math
 import time
 
-def video_detection(path_x, mode):
+
+def video_detection(path_x, mode, path_dl):
+    
+
+
+
     video_capture = path_x
     #Create a Webcam Object
     cap=cv2.VideoCapture(video_capture)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 2)
+    # cap.set(cv2.CAP_PROP_BUFFERSIZE, 2)
     fps_in = cap.get(cv2.CAP_PROP_FPS)
-    fps_out = 25
+    fps_out = 10
 
     classes_for_heatmap = [0]
     index_in = -1
@@ -22,7 +27,7 @@ def video_detection(path_x, mode):
     frame_width=int(cap.get(3))
     frame_height=int(cap.get(4))
     label=f'Green pixels'
-    out=cv2.VideoWriter('static/files/uploadoutput.mp4', cv2.VideoWriter_fourcc('M', 'J', 'P','G'), 10, (frame_width, frame_height))
+    out=cv2.VideoWriter(path_dl, cv2.VideoWriter_fourcc('M', 'J', 'P','G'), 10, (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
     if mode == "space":
         model=YOLO("yolov8n.pt")
         classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
@@ -103,7 +108,7 @@ def video_detection(path_x, mode):
         cv2.putText(img, label, (100,100),cv2.FONT_HERSHEY_SIMPLEX, 2,[255,255,255], thickness=5,lineType=cv2.LINE_AA)
         # normalized_heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
         colored_map = cv2.applyColorMap(heatmap.astype(np.uint8), cv2.COLORMAP_HSV)
-
+        
         frame_with_heatmap = cv2.addWeighted(img, 0.5, colored_map, 0.5, 0)
         hsv = cv2.cvtColor(frame_with_heatmap, cv2.COLOR_BGR2HSV)
         h, s, v = cv2.split(hsv)
@@ -120,8 +125,11 @@ def video_detection(path_x, mode):
         out.write(frame_with_heatmap)
         yield frame_with_heatmap
         
-        #cv2.imshow("image", img)
-        #if cv2.waitKey(1) & 0xFF==ord('1'):
-            #break
+        # cv2.imshow("image", frame_with_heatmap)
+        # if cv2.waitKey(1) & 0xFF==ord('1'):
+            # break
     out.release()
 # cv2.destroyAllWindows()
+
+
+# video_detection('static/files/IMG_0679 3.MOV',"space")

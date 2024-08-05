@@ -1,5 +1,6 @@
-from flask import Flask, render_template, Response,jsonify,request,session,redirect
+from flask import Flask, render_template, Response,jsonify,request,session,redirect, send_file
 from dotenv import load_dotenv
+from pathlib import Path
 
 #FlaskForm--> it is required to receive input from the user
 # Whether uploading a video file  to our object detection model
@@ -61,8 +62,8 @@ class UploadFileForm(FlaskForm):
     submit = SubmitField("Run")
 
 
-def generate_frames(path_x = '', mode = ''):
-    yolo_output = video_detection(path_x,mode)
+def generate_frames(path_x = '', mode = '', path_dl = ''):
+    yolo_output = video_detection(path_x,mode,path_dl)
     for detection_ in yolo_output:
         ref,buffer=cv2.imencode('.jpg',detection_)
 
@@ -136,21 +137,47 @@ def ballform():
                                              secure_filename(file.filename))
     return render_template('videoball.html', form=form)
 
-@app.route('/download')
-def downloadFile (filename):
+@app.route('/download', methods=['GET', 'POST'])
+def downloadFile (filename=''):
     #For windows you need to use drive name [ex: F:/Example.pdf]
-    path = "/Examples.pdf"
-    return send_file(path, as_attachment=True)
+    session_path = session['video_path']
+    uploads_folder = "uploads"
+    
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    filename=os.path.basename(session_path)
+    uploads_path = os.path.join(dir_path, app.config['UPLOAD_FOLDER'], uploads_folder, filename)
+    # print(f"Filename is {os.path.basename(session_path)}")
+    # print(f"Directory is {dir_path}")
+    # print(f"Download Path is {uploads_path}")
+    path = 'output.avi'
+    return send_file(uploads_path, as_attachment=True)
 
 
 @app.route('/video')
 def video():
+    session_path = session.get('video_path', None)
+    uploads_folder = "uploads"
+    
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    filename=os.path.basename(session_path)
+    # filename=Path(filename).stem
+    uploads_path = os.path.join(dir_path, app.config['UPLOAD_FOLDER'], uploads_folder, filename)
+    # uploads_path = uploads_path + '.mp4'
     #return Response(generate_frames(path_x='static/files/bikes.mp4'), mimetype='multipart/x-mixed-replace; boundary=frame')
-    return Response(generate_frames(path_x = session.get('video_path', None), mode = "space"),mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(generate_frames(path_x = session.get('video_path', None), mode = "space", path_dl = uploads_path),mimetype='multipart/x-mixed-replace; boundary=frame')
 @app.route('/videoball')
 def videoball():
     #return Response(generate_frames(path_x='static/files/bikes.mp4'), mimetype='multipart/x-mixed-replace; boundary=frame')
-    return Response(generate_frames(path_x = session.get('video_path', None), mode = "ball"),mimetype='multipart/x-mixed-replace; boundary=frame')
+    session_path = session.get('video_path', None)
+    uploads_folder = "uploads"
+    
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    filename=os.path.basename(session_path)
+    # filename=Path(filename).stem
+    uploads_path = os.path.join(dir_path, app.config['UPLOAD_FOLDER'], uploads_folder, filename)
+    # uploads_path = uploads_path + '.mp4'
+    #return Response(generate_frames(path_x='static/files/bikes.mp4'), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(generate_frames(path_x = session.get('video_path', None), mode = "ball", path_dl = uploads_path),mimetype='multipart/x-mixed-replace; boundary=frame')
 # To display the Output Video on Webcam page
 @app.route('/webapp')
 def webapp():
