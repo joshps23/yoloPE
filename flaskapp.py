@@ -145,7 +145,9 @@ def downloadFile (filename=''):
     
     dir_path = os.path.dirname(os.path.realpath(__file__))
     filename=os.path.basename(session_path)
-    uploads_path = os.path.join(dir_path, app.config['UPLOAD_FOLDER'], uploads_folder, filename)
+    filename=Path(filename).stem
+    uploads_path = os.path.join(dir_path, app.config['UPLOAD_FOLDER'],filename)
+    uploads_path = uploads_path + '_analysed.mp4'
     # print(f"Filename is {os.path.basename(session_path)}")
     # print(f"Directory is {dir_path}")
     # print(f"Download Path is {uploads_path}")
@@ -160,9 +162,9 @@ def video():
     
     dir_path = os.path.dirname(os.path.realpath(__file__))
     filename=os.path.basename(session_path)
-    # filename=Path(filename).stem
-    uploads_path = os.path.join(dir_path, app.config['UPLOAD_FOLDER'], uploads_folder, filename)
-    # uploads_path = uploads_path + '.mp4'
+    filename=Path(filename).stem
+    uploads_path = os.path.join(dir_path, app.config['UPLOAD_FOLDER'], filename)
+    uploads_path = uploads_path + '_analysed.mp4'
     #return Response(generate_frames(path_x='static/files/bikes.mp4'), mimetype='multipart/x-mixed-replace; boundary=frame')
     return Response(generate_frames(path_x = session.get('video_path', None), mode = "space", path_dl = uploads_path),mimetype='multipart/x-mixed-replace; boundary=frame')
 @app.route('/videoball')
@@ -173,9 +175,9 @@ def videoball():
     
     dir_path = os.path.dirname(os.path.realpath(__file__))
     filename=os.path.basename(session_path)
-    # filename=Path(filename).stem
-    uploads_path = os.path.join(dir_path, app.config['UPLOAD_FOLDER'], uploads_folder, filename)
-    # uploads_path = uploads_path + '.mp4'
+    filename=Path(filename).stem
+    uploads_path = os.path.join(dir_path, app.config['UPLOAD_FOLDER'], filename)
+    uploads_path = uploads_path + '_analysed.mp4'
     #return Response(generate_frames(path_x='static/files/bikes.mp4'), mimetype='multipart/x-mixed-replace; boundary=frame')
     return Response(generate_frames(path_x = session.get('video_path', None), mode = "ball", path_dl = uploads_path),mimetype='multipart/x-mixed-replace; boundary=frame')
 # To display the Output Video on Webcam page
