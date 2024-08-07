@@ -16,7 +16,7 @@ def video_detection(path_x, mode, path_dl):
     cap=cv2.VideoCapture(video_capture)
     # cap.set(cv2.CAP_PROP_BUFFERSIZE, 2)
     fps_in = cap.get(cv2.CAP_PROP_FPS)
-    fps_out = 10
+    fps_out = 5
 
     classes_for_heatmap = [0]
     index_in = -1
@@ -27,7 +27,7 @@ def video_detection(path_x, mode, path_dl):
     frame_width=int(cap.get(3))
     frame_height=int(cap.get(4))
     label=f'Green pixels'
-    out=cv2.VideoWriter(path_dl, cv2.VideoWriter_fourcc('M', 'J', 'P','G'), 10, (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+    out=cv2.VideoWriter(path_dl, cv2.VideoWriter_fourcc('M', 'J', 'P','G'), 10, (int(cap.get(3)), int(cap.get(4))))
     if mode == "space":
         model=YOLO("yolov8n.pt")
         classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
@@ -51,10 +51,10 @@ def video_detection(path_x, mode, path_dl):
     success, img = cap.read()
 
     h,w,c = img.shape
-    heatmap = np.zeros((int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))), dtype=np.float32)
+    heatmap = np.zeros((int(cap.get(4)), int(cap.get(3))), dtype=np.float32)
     # heatmap_obj=solutions.Heatmap(
     # heatmap_alpha=0.5,
-    # # colormap=cv2.COLORMAP_PARULA,
+    # # colormap=cv2.COLORMAP_PARULA, 
     # imw=int(w),
     # imh=int(h),
     # view_img=False,
@@ -75,6 +75,9 @@ def video_detection(path_x, mode, path_dl):
 
 
             success, img = cap.read()
+            if not success:
+                print("finished running video")
+                return
             
                 
             
