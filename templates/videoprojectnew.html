@@ -6,126 +6,8 @@
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>CPS Coach Pro</title>
-    <style>
-        body{
-            color:black;
-            margin:0px;
-            padding:0px;
-        }
-        header.feature-box.top{
-        background-color:green;
-        height:9vh;
-        margin:0px;
-        padding:1px;
-        text-align:center;
-        }
-        header.feature-box.second{
-        background-color:blue;
-        height:50px;
-        text-align:center;
-        margin-top:-25px;
-        }
-        .features{
-          background-color:black;
-          width: 900px;
-          height: 700px;
-          border-radius: 35px;
-          object-fit: contain;
-          margin:20px;
-        }
-        section.col-sm{
-          background-color:black;
-          width: 100vw;
-          height: 83vh;
-          /* border-radius: 35px; */
-          object-fit: contain;
-          margin:0px;
-        }
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 
-        img{
-          width: 99vw;
-          height: 83vh;
-          border-radius: 35px;
-          object-fit: contain;
-          margin:1px;
-        }
-
-        .new{
-        color:black;
-        margin:0px;
-        padding:10px;
-        height: 6vh;
-        width: 100vw;
-        /* display: flex; */
-        background-color:green;
-        margin:0px;
-        margin-top: 0px;
-        }
-
-        ul{
-        list-style:none;
-        padding:0px;}
-        li{
-        display:inline-block;
-        background-color:gray;
-        border-radius:10px;
-        box-shadow: 2px 3px;
-        padding:10px;
-        margin:10px;
-        }
-        li:hover{
-        background-color:red;
-        margin:10px;
-        }
-        button{
-        /* display:inline-block; */
-        background-color:gray;
-        border-radius:10px;
-        padding:10px;
-        
-        }
-
-        .btnClear{
-        background-color: red;
-        float: left;
-        margin-left: 20px;
-        
-        
-        
-        }
-        .custom-file-input{
-        background-color:green;
-        padding:0px;
-        
-        }
-
-        .schlogo{
-          object-fit: contain;
-          float: right;
-          padding-right: 20px;
-        }
-
-        .btnSubmit{
-        display: block;
-        margin: 0 auto;
-        
-          background-color:blue;
-        }
-
-        .btnDownload{
-          display: block;
-        margin-left: 20px;
-        }
-
-        .image-cropper {
-          width: 100px;
-          height: 100px;
-          position: relative;
-          overflow: hidden;
-          border-radius: 50%;
-        }
-
-    </style>
 </head>
 <body>
 <header class="feature-box top">
@@ -142,7 +24,7 @@
       Download
     </button> -->
     
-      <img src="static/images/TransparentCircleLogo.png" class="schlogo" style="max-height: 7vh; max-width: 7vh; background-color: green;">
+      <img src="static/images/TransparentCircleLogo.png" class="schlogo">
     
     
     <!-- <li><a href="/webcam">LiveWebcam</a></li> -->
@@ -157,17 +39,17 @@
      <h1><strong>Output Video</strong></h1>
 </header> -->
 
-<section class="col-sm " >
+<section class="col-md " >
           <img src="{{ url_for('video') }}"   alt="Upload video">
 
   </section>
 <section>
     <div class="new" >
-      <form method = 'POST' enctype="multipart/form-data" tyle="align-content: center; text-align: center;display: flex;">
+      <form method = 'POST' enctype="multipart/form-data" class="video-form">
         {{form.hidden_tag()}}
         {{form.file(class_="custom-file-input")}}
 
-        <div>
+        
         
 
 
@@ -176,7 +58,7 @@
         Submit
     </button>
 
-      </div>
+      
       </form>
     </div>
 
