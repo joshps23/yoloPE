@@ -29,7 +29,7 @@ def video_classify(path_x):
       text_color_bg=(0,0,0)
       text_size, _ = cv2.getTextSize(label, font, font_scale, font_thickness)
       text_w, text_h = text_size
-      cv2.rectangle(img,((frame_width//2)-(text_w//2),(frame_height//2)),((frame_width//2)+(text_w//2),(frame_height//2)+text_h),text_color_bg,-1)
-      cv2.putText(img, label, ((frame_width//4),(frame_height//2)),cv2.FONT_HERSHEY_SIMPLEX, 20,[255,0,0], thickness=20,lineType=cv2.LINE_AA)
+      cv2.rectangle(img,((frame_width//2)-(text_w//2),(frame_height//2)-text_h),((frame_width//2)+(text_w//2),(frame_height//2)),text_color_bg,-1)
+      cv2.putText(img, label, ((frame_width//2)-(text_w//2),(frame_height//2)),cv2.FONT_HERSHEY_SIMPLEX, 20,[0,0,0], thickness=20,lineType=cv2.LINE_AA)
 
       yield img
