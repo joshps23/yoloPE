@@ -20,6 +20,7 @@ import cv2
 # YOLO_Video is the python file which contains the code for our object detection model
 #Video Detection is the Function which performs Object Detection on Input Video
 from YOLO_Video import video_detection
+from YOLO_Video_Class import video_classify
 app = Flask(__name__)
 
 load_dotenv()
@@ -71,6 +72,15 @@ def generate_frames(path_x = '', mode = '', path_dl = ''):
         yield (b'--frame\r\n'
                     b'Content-Type: image/jpeg\r\n\r\n' + frame +b'\r\n')
 
+def generate_classimg(path_x = ''):
+    yolo_output = video_classify(path_x)
+    for detection_ in yolo_output:
+        ref,buffer=cv2.imencode('.jpg',detection_)
+
+        frame=buffer.tobytes()
+        yield (b'--frame\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n' + frame +b'\r\n')
+
 def generate_frames_web(path_x):
     yolo_output = video_detection(path_x)
     for detection_ in yolo_output:
@@ -97,10 +107,33 @@ def home():
         session['video_path'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'],
                                              secure_filename(file.filename))
     return render_template('videoprojectnew.html', form=form)
+
+
+
+
+@app.route('/2rs', methods=['GET','POST'])
+def terra():
+    # Upload File Form: Create an instance for the Upload File Form
+    
+    form = UploadFileForm()
+    if form.validate_on_submit():
+        # Our uploaded video file path is saved here
+
+        file = form.file.data
+        file.save(os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'],
+                               secure_filename(file.filename)))  # Then save the file
+        # Use session storage to save video file path
+        session['video_path'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'],
+                                             secure_filename(file.filename))
+    return render_template('terra.html', form=form)
+
+
 # Rendering the Webcam Rage
 #Now lets make a Webcam page for the application
 #Use 'app.route()' method, to render the Webcam page at "/webcam"
 @app.route("/webcam", methods=['GET','POST'])
+
+
 
 def webcam():
     session.clear()
@@ -180,6 +213,17 @@ def videoball():
     uploads_path = uploads_path + '_analysed.mp4'
     #return Response(generate_frames(path_x='static/files/bikes.mp4'), mimetype='multipart/x-mixed-replace; boundary=frame')
     return Response(generate_frames(path_x = session.get('video_path', None), mode = "ball", path_dl = uploads_path),mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
+@app.route('/classify')
+def classify():
+    session_path = session.get('video_path', None)
+    uploads_folder = "uploads"
+    
+
+    #return Response(generate_frames(path_x='static/files/bikes.mp4'), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(generate_classimg(path_x = session.get('video_path', None)),mimetype='multipart/x-mixed-replace; boundary=frame')
+
 # To display the Output Video on Webcam page
 @app.route('/webapp')
 def webapp():
@@ -190,6 +234,11 @@ def webapp():
 def clear():
     session.clear()
     return redirect("/")
+
+@app.route("/clearterra")
+def clearterra():
+    session.clear()
+    return redirect("/2rs")
 @app.route("/clearball")
 def clearball():
     session.clear()

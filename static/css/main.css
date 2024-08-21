@@ -42,11 +42,16 @@ margin:0px;
 
 img{
 width: 99vw;
-/* height: 83vh; */
-max-height: 83vh;
+height: 83vh;
+
 border-radius: 35px;
 object-fit: contain;
 margin:1px;
+}
+
+.recycle-class {
+  /* display:inline-block; */
+  max-height: 80vh;
 }
 
 .new{
@@ -136,5 +141,10 @@ height: 100px;
 position: relative;
 overflow: hidden;
 border-radius: 50%;
+}
+
+.title2rs {
+  font-size: 43px;
+  display: inline-block;
 }
 

@@ -4,3 +4,8 @@ YOLO_Heatmap.py
 .secrets
 env
 .pyenv
+face_blurring.py
+video.mp4
+raw_videos
+testpy
+runs
