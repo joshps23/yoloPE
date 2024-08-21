@@ -22,6 +22,6 @@ def video_classify(path_x):
       probs = results[0].probs.top1
       classification = names_dict[probs]
       label = f'{classification}'
-      cv2.putText(img, label, (100,200),cv2.FONT_HERSHEY_SIMPLEX, 10,[255,0,0], thickness=5,lineType=cv2.LINE_AA)
+      cv2.putText(img, label, (100,200),cv2.FONT_HERSHEY_SIMPLEX, 10,[255,0,0], thickness=10,lineType=cv2.LINE_AA)
 
       yield img
