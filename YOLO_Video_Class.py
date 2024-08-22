@@ -11,7 +11,7 @@ def video_classify(path_x):
     cap=cv2.VideoCapture(video_capture)
     frame_width=int(cap.get(3))
     frame_height=int(cap.get(4))
-    model=YOLO("waste_management2.pt")
+    model=YOLO("waste_management4.pt")
     classNames = ["cardboard", "glass", "metal", "paper", "plastic", "trash"]
     count=0
     while True:
