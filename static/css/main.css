@@ -144,7 +144,17 @@ border-radius: 50%;
 }
 
 .title2rs {
-  font-size: 43px;
+  font-size: 5vw;
   display: inline-block;
+}
+
+.usdz {
+  display: inline-block;
+  /* width: 30px; */
+}
+
+.usdz-anchor {
+  display: inline-block;
+  /* width: 30px;  */
 }
 
