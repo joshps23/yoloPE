@@ -46,6 +46,7 @@ def video_detection(path_x, mode, path_dl):
         model=YOLO("ballDetectBestV2.pt")
         classNames = ["ball"]
         class_to_detect = "ball"
+
     
     # classNames = ['ball']
     success, img = cap.read()
