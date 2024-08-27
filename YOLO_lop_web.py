@@ -63,13 +63,15 @@ def lop_detection(path_x, path_dl):
     out=cv2.VideoWriter(path_dl, cv2.VideoWriter_fourcc('M', 'J', 'P','G'), 10, (int(cap.get(3)), int(cap.get(4))))
     classNames = ["vball","attacker","defender"
                 ]
-    model=YOLO("lop_4.pt")
+    model=YOLO("lop_5.pt")
     # classNames = ['ball']
     success, img = cap.read()
 
     h,w,c = img.shape
 
     count=0
+    greencount=0
+    redcount=0
     while True:
         success_grab = cap.grab()
         if not success_grab: 
@@ -116,7 +118,10 @@ def lop_detection(path_x, path_dl):
                         color = (222, 82, 175)
                         
                         attacker_midpoint=(center_x,y2)
-                        attacker_midpoint_arr.append(attacker_midpoint)
+                        if conf>0.7:
+                          attacker_midpoint_arr.append(attacker_midpoint)
+
+                        
                         roi_color = img[y1:y1+h, xh1:xh1+(2*w)]
                         blur_image = cv2.GaussianBlur(roi_color,(51,51),0)
                         img[y1:y1+h, xh1:xh1+(2*w)] = blur_image 
@@ -124,7 +129,8 @@ def lop_detection(path_x, path_dl):
                     elif class_name == "defender":
                         color = (0, 149, 255)
                         # cv2.line(img, (x1,y2), (x2,y2), color, 2)
-                        defender_line_array=[(x1,y2-60), (x2,y2)]
+                        if conf>0.7:
+                          defender_line_array=[(x1,y2-60), (x2,y2)]
                         roi_color = img[y1:y1+h, xh1:xh1+(2*w)]
                         blur_image = cv2.GaussianBlur(roi_color,(51,51),0)
                         img[y1:y1+h, xh1:xh1+(2*w)] = blur_image 
@@ -162,11 +168,22 @@ def lop_detection(path_x, path_dl):
                             yi = int(yi)
                             overlay = cv2.line(overlay,(xa,ya),(xb,yb),(0,0,255),50)
                             img = cv2.addWeighted(overlay,alpha,img,1-alpha,0)
+                            redcount+=1
+                            count+=1
                             # img = cv2.circle(img, (xi,yi), radius=10, color=(255,0,0), thickness=-1)
                             # cv2.imwrite("intersect.jpg", img)
                           else:
                             overlay = cv2.line(overlay,(xa,ya),(xb,yb),(0,255,0),50)
                             img = cv2.addWeighted(overlay,alpha,img,1-alpha,0)
+                            greencount+=1
+                            count+=1
+        
+        label=f'Clear: {greencount/10} Blocked: {redcount/10} Total: {count/10}'
+        t_size = cv2.getTextSize(label, 0, fontScale=2, thickness=5)[0]
+        text_w, text_h = t_size
+        c2 = 120 + text_w, 80 + text_h
+        cv2.rectangle(img, (100,50), c2, (0,0,0), -1, cv2.LINE_AA)
+        cv2.putText(img, label, (100,65 + text_h),cv2.FONT_HERSHEY_SIMPLEX, 2,[0,255,0], thickness=5,lineType=cv2.LINE_AA)
         out.write(img)
         yield img
         
