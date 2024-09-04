@@ -63,7 +63,7 @@ def lop_detection(path_x, path_dl):
     out=cv2.VideoWriter(path_dl, cv2.VideoWriter_fourcc('M', 'J', 'P','G'), 10, (int(cap.get(3)), int(cap.get(4))))
     classNames = ["vball","attacker","defender"
                 ]
-    model=YOLO("lop_5.pt")
+    model=YOLO("lop_8.pt")
     # classNames = ['ball']
     success, img = cap.read()
 
@@ -110,17 +110,28 @@ def lop_detection(path_x, path_dl):
                     class_name=classNames[cls]
                     label=f'{class_name}{conf}'
                     t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=2)[0]
+
                     print(t_size)
                     c2 = x1 + t_size[0], y1 - t_size[1] - 3
+                    length=(x2-x1)//2
+                    minor_axes=(length)//3
+                    alpha=0.2
+                    player_alpha=0.2
                     if class_name == 'vball':
                         color=(0, 204, 255)
-                    elif class_name == "attacker":
+                    elif class_name == "attacker" and (int(y2-y1)>300):
                         color = (222, 82, 175)
                         
                         attacker_midpoint=(center_x,y2)
                         if conf>0.7:
+                          
                           attacker_midpoint_arr.append(attacker_midpoint)
-
+                          attacker_overlay=img.copy()
+                          attacker_overlay=cv2.ellipse(img=attacker_overlay, center=attacker_midpoint, axes=(length,minor_axes), angle=0, 
+                          startAngle=0, endAngle=360, color=(0,255,0), thickness=-1)
+                          img = cv2.addWeighted(attacker_overlay,player_alpha,img,1-player_alpha,0)
+                          #cv2.line(img, (x1,y2), (x2,y2), (0,255,0), 30)
+                          #cv2.circle(img, attacker_midpoint, 10, color, -1)
                         
                         roi_color = img[y1:y1+h, xh1:xh1+(2*w)]
                         blur_image = cv2.GaussianBlur(roi_color,(51,51),0)
@@ -128,9 +139,16 @@ def lop_detection(path_x, path_dl):
 
                     elif class_name == "defender":
                         color = (0, 149, 255)
-                        # cv2.line(img, (x1,y2), (x2,y2), color, 2)
+                        deffender_midpoint=(center_x,y2-20)
+                        
                         if conf>0.7:
                           defender_line_array=[(x1,y2-60), (x2,y2)]
+                        #   defender_overlay=img.copy()
+                        #   defender_overlay=cv2.ellipse(img=defender_overlay, center=deffender_midpoint, axes=(length,minor_axes), angle=0, 
+                        #   startAngle=0, endAngle=360, color=(0,0,255), thickness=-1)
+                        #   img = cv2.addWeighted(defender_overlay,player_alpha,img,1-player_alpha,0)
+                          #cv2.line(img, (x1,y2), (x2,y2), (0,0,255), 30)
+                          #cv2.circle(img, deffender_midpoint, 10, color, -1)
                         roi_color = img[y1:y1+h, xh1:xh1+(2*w)]
                         blur_image = cv2.GaussianBlur(roi_color,(51,51),0)
                         img[y1:y1+h, xh1:xh1+(2*w)] = blur_image 
@@ -143,41 +161,58 @@ def lop_detection(path_x, path_dl):
 
                     np_attacker_arr = np.array(attacker_midpoint_arr)
                     # cv2.drawContours(img, [np_attacker_arr], 0, (0,255,0), 4)
-                    
+                    ind_used=[]
                     for ind in range (0,len(attacker_midpoint_arr)):
-                      if 0 <= ind+1 < len(attacker_midpoint_arr) and not defender_line_array == []:
-                        (xa,ya)=attacker_midpoint_arr[ind]
-                        (xb,yb)=attacker_midpoint_arr[ind+1]
-                        (xc,yc)=defender_line_array[0]
-                        (xd,yd)=defender_line_array[1]
-                        A=Point(xa,ya)
-                        B=Point(xb,yb)
-                        C=Point(xc,yc)
-                        D=Point(xd,yd)
-                        intersect = lineLineIntersection(A,B,C,D)
-                        print(f" intersect is at {intersect}")
-                        if not intersect == None:
-                          (xi,yi) = intersect
-                          # img = cv2.circle(img, (int(xi),int(yi)), radius=10, color=(0,0,0), thickness=-1)
-                          overlay=img.copy()
-                          alpha=0.2
-                          if check(xi,xc,xd) and check(yi,yc,yd):
-                            print(f"INTERSECT: x range is {xa,xb} and xi is {xi}")
-                            print(f"INTERSECT: y range is {ya,yb} and yi is {yi}")
-                            xi = int(xi)
-                            yi = int(yi)
-                            overlay = cv2.line(overlay,(xa,ya),(xb,yb),(0,0,255),50)
-                            img = cv2.addWeighted(overlay,alpha,img,1-alpha,0)
-                            redcount+=1
-                            count+=1
-                            # img = cv2.circle(img, (xi,yi), radius=10, color=(255,0,0), thickness=-1)
-                            # cv2.imwrite("intersect.jpg", img)
-                          else:
-                            overlay = cv2.line(overlay,(xa,ya),(xb,yb),(0,255,0),50)
-                            img = cv2.addWeighted(overlay,alpha,img,1-alpha,0)
-                            greencount+=1
-                            count+=1
-        
+                      
+                      for ind2 in range (0,len(attacker_midpoint_arr)):
+                         if not ind2 == ind and ind2 not in ind_used:
+                            overlay=img.copy()
+                    #   if 0 <= ind+1 < len(attacker_midpoint_arr) and not defender_line_array == []:
+                            if not defender_line_array == []:
+                                (xa,ya)=attacker_midpoint_arr[ind]
+                                (xb,yb)=attacker_midpoint_arr[ind2]
+                                (xc,yc)=defender_line_array[0]
+                                (xd,yd)=defender_line_array[1]
+                                A=Point(xa,ya)
+                                B=Point(xb,yb)
+                                C=Point(xc,yc)
+                                D=Point(xd,yd)
+                                intersect = lineLineIntersection(A,B,C,D)
+                                # print(f" intersect is at {intersect}")
+                                
+                                if not intersect == None:
+                                    (xi,yi) = intersect
+                                    # img = cv2.circle(img, (int(xi),int(yi)), radius=10, color=(0,0,0), thickness=-1)
+                                    
+                          
+                                    if check(xi,xc,xd) and check(yi,yc,yd):
+                                        print(f"INTERSECT: x range is {xa,xb} and xi is {xi}")
+                                        print(f"INTERSECT: y range is {ya,yb} and yi is {yi}")
+                                        xi = int(xi)
+                                        yi = int(yi)
+                                        overlay = cv2.line(overlay,(xa,ya),(xb,yb),(0,0,255),50)
+                                        img = cv2.addWeighted(overlay,alpha,img,1-alpha,0)
+                                        redcount+=1
+                                        count+=1
+                                        # img = cv2.circle(img, (xi,yi), radius=10, color=(255,0,0), thickness=-1)
+                                        # cv2.imwrite("intersect.jpg", img)
+                                    else:
+                                        overlay = cv2.line(overlay,(xa,ya),(xb,yb),(0,255,0),50)
+                                        img = cv2.addWeighted(overlay,alpha,img,1-alpha,0)
+                                        greencount+=1
+                                        count+=1
+                                defender_overlay=img.copy()
+                                defender_overlay=cv2.ellipse(img=defender_overlay, center=deffender_midpoint, axes=(length,minor_axes), angle=0, 
+                                startAngle=0, endAngle=360, color=(0,0,255), thickness=-1)
+                                img = cv2.addWeighted(defender_overlay,player_alpha,img,1-player_alpha,0)
+                            else:
+                                (xa,ya)=attacker_midpoint_arr[ind]
+                                (xb,yb)=attacker_midpoint_arr[ind2]
+                                overlay = cv2.line(overlay,(xa,ya),(xb,yb),(0,255,0),50)
+                                img = cv2.addWeighted(overlay,alpha,img,1-alpha,0)
+                                greencount+=1
+                                count+=1
+                      ind_used.append(ind)
         label=f'Clear: {greencount/10} Blocked: {redcount/10} Total: {count/10}'
         t_size = cv2.getTextSize(label, 0, fontScale=2, thickness=5)[0]
         text_w, text_h = t_size
