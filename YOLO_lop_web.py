@@ -3,7 +3,8 @@ from ultralytics import YOLO
 import cv2
 import numpy as np
 import math
-import time
+import pathlib
+# import time
 
 class Point:
     def __init__(self, x, y):
@@ -76,6 +77,9 @@ def lop_detection(path_x, path_dl):
         success_grab = cap.grab()
         if not success_grab: 
             print("finished running video")
+            out.release()
+            file_to_rem = pathlib.Path(path_x)
+            file_to_rem.unlink()
             return
         index_in += 1
 
@@ -86,6 +90,9 @@ def lop_detection(path_x, path_dl):
             success, img = cap.read()
             if not success:
                 print("finished running video")
+                out.release()
+                file_to_rem = pathlib.Path(path_x)
+                file_to_rem.unlink()
                 return
             
                 
@@ -225,7 +232,7 @@ def lop_detection(path_x, path_dl):
         # cv2.imshow("image", frame_with_heatmap)
         # if cv2.waitKey(1) & 0xFF==ord('1'):
             # break
-    out.release()
+    
 # cv2.destroyAllWindows()
 
 
