@@ -13,7 +13,7 @@ dribble = "-"
 shield = "-"
 next_id = 0
 tracked_people = []
-iou_threshold = 0.5
+iou_threshold = 0.7
 defender_center = [0.0,0.0]
 body_shield = "-"
 body_polygon = []
@@ -91,7 +91,7 @@ class TrackedPerson:
         self.age += 1
         self.det = det
         global dribble, shield
-        if self.age > 60:
+        if self.age > 90:
             self.dribble_status = False
             dribble = "-"
             shield = "-"
@@ -109,7 +109,7 @@ class TrackedPerson:
         peaks, _ = find_peaks(y, prominence=0.02)
         peaks_l, _ = find_peaks(y_l, prominence=0.02)
         
-        if len(peaks)>1 or len(peaks_l)>1:
+        if len(peaks)>3 or len(peaks_l)>1:
             
             self.dribble_status = True
             self.role = "Attacker"
@@ -162,14 +162,14 @@ class TrackedPerson:
         if self.dribble_status:
             if self.dribbling_hand == "Right":
 
-                if len(peaks)>1 and r_waist is not None:
+                if len(peaks)>1:
                     if y[peaks[-1]] > r_elbow:
                         self.dribble_height = 'Good'
                         print(f'Right hand: {r_hand} and Right elbow {r_elbow}')
                     else:
                         self.dribble_height = "Too High"
             else:
-                if len(peaks_l)>1 and r_waist is not None:
+                if len(peaks_l)>1:
                     if y_l[peaks_l[-1]] > l_elbow:
                         self.dribble_height = 'Good'
                         print(f'Left hand: {l_hand} and Left elbow {l_elbow}')
@@ -301,7 +301,9 @@ def update_tracker(detections, frame_idx):
         best_track_idx = -1
         for t_idx, track in enumerate(tracked_people):
 
-            iou = calculate_iou(track.bbox, det[51:55])
+            tracked_bbox = get_bbox_from_keypoints(track.det)
+            untracked_bbox = get_bbox_from_keypoints(det)
+            iou = calculate_iou(tracked_bbox, untracked_bbox)
             if iou > iou_threshold and iou > best_iou:
                 best_iou = iou
                 best_track_idx = t_idx
@@ -391,6 +393,9 @@ def draw_tracked_keypoints(image, detections, matches, tracked_people, frame_h, 
                 pt2 = int(x2 * frame_w), int(y2 * frame_h)
                 if tracked_person.role == "Attacker":
                     cv2.line(output, pt1, pt2, (0, 255, 0), 4)
+        bbox = get_bbox_from_keypoints(tracked_person.det)
+        xmin,ymin,xmax,ymax = to_pixel_bbox(bbox,frame_w,frame_h)
+        # cv2.rectangle(output,(xmin,ymin),(xmax,ymax),color=(0,255,0),thickness=2) 
   
         # if tracked_person.role == "Attacker":
         #     output = draw_nose_to_bbox_polygon_from_person(output,tracked_person.det,frame_w,frame_h)
@@ -401,7 +406,7 @@ def draw_tracked_keypoints(image, detections, matches, tracked_people, frame_h, 
         # cv2.putText(output, f"Sheilding: {tracked_person.shielding}", (x_nose, y_nose + 100), cv2.FONT_HERSHEY_SIMPLEX, 2.0, tracked_person.color, 6)
         # cv2.putText(output, f"Dribble: {tracked_person.dribble_status}", (x_nose, y_nose + 50), cv2.FONT_HERSHEY_SIMPLEX, 2.0, tracked_person.color, 6)
         
-    
+    output = draw_rounded_rectangle_alpha(output, (50,30), (1300,300),10,(0,128,0),alpha=0.5)
     cv2.putText(output, f"Dribble: ", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (255, 255, 255), 6)
     (text_width, _), _ = cv2.getTextSize("Dribble: ", cv2.FONT_HERSHEY_SIMPLEX, 2.0, 6)
     cv2.putText(output, f"{dribble}", (100 + text_width, 100), cv2.FONT_HERSHEY_SIMPLEX, 2.0, color_dribble, 6)
@@ -577,6 +582,62 @@ def draw_nose_to_bbox_polygon_from_person(image, det, frame_w, frame_h,
     output = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
 
     return output
+
+def get_bbox_from_keypoints(person, confidence_threshold=0.3):
+    """
+    keypoints: np.array of shape (17, 3), each row is (x, y, confidence)
+    Returns: (xmin, ymin, xmax, ymax) as float (normalized)
+    """
+    # Filter out keypoints below confidence threshold
+    keypoints = person[:51].reshape(17, 3)
+    valid = keypoints[:, 2] > confidence_threshold
+    if not np.any(valid):
+        return None  # No valid keypoints
+
+    x_coords = keypoints[valid, 1]
+    y_coords = keypoints[valid, 0]
+
+    xmin = float(np.min(x_coords))
+    xmax = float(np.max(x_coords))
+    ymin = float(np.min(y_coords))
+    ymax = float(np.max(y_coords))
+
+    return (xmin, ymin, xmax, ymax)
+
+def to_pixel_bbox(bbox, image_width, image_height):
+    xmin, ymin, xmax, ymax = bbox
+    return (
+        int(xmin * image_width),
+        int(ymin * image_height),
+        int(xmax * image_width),
+        int(ymax * image_height)
+    )
+
+def draw_rounded_rectangle_alpha(img, top_left, bottom_right, radius, color_bgr, alpha):
+    overlay = img.copy()
+
+    # Convert to float32 for blending
+    overlay = overlay.astype(np.float32)
+    img = img.astype(np.float32)
+
+    x1, y1 = top_left
+    x2, y2 = bottom_right
+
+    # Draw rectangles
+    cv2.rectangle(overlay, (x1 + radius, y1), (x2 - radius, y2), color_bgr, -1)
+    cv2.rectangle(overlay, (x1, y1 + radius), (x2, y2 - radius), color_bgr, -1)
+
+    # Draw rounded corners
+    cv2.ellipse(overlay, (x1 + radius, y1 + radius), (radius, radius), 180, 0, 90, color_bgr, -1)
+    cv2.ellipse(overlay, (x2 - radius, y1 + radius), (radius, radius), 270, 0, 90, color_bgr, -1)
+    cv2.ellipse(overlay, (x1 + radius, y2 - radius), (radius, radius), 90, 0, 90, color_bgr, -1)
+    cv2.ellipse(overlay, (x2 - radius, y2 - radius), (radius, radius), 0, 0, 90, color_bgr, -1)
+
+    # Blend overlay with alpha
+    cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0, dst=img)
+
+    return img.astype(np.uint8)
+
 
 
 
