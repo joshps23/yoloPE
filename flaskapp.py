@@ -22,6 +22,7 @@ import cv2
 from YOLO_Video import video_detection
 from YOLO_Video_Class import video_classify
 from YOLO_lop_web import lop_detection
+from YOLO_dribbling import dribbling_pose
 app = Flask(__name__)
 
 load_dotenv()
@@ -81,6 +82,15 @@ def generate_frames(path_x = '', mode = '', path_dl = ''):
 
 def generate_lop(path_x = '', path_dl = ''):
     yolo_output = lop_detection(path_x,path_dl)
+    for detection_ in yolo_output:
+        ref,buffer=cv2.imencode('.jpg',detection_)
+
+        frame=buffer.tobytes()
+        yield (b'--frame\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n' + frame +b'\r\n')
+        
+def generate_dribbling(path_x = '', path_dl = ''):
+    yolo_output = dribbling_pose(path_x,path_dl)
     for detection_ in yolo_output:
         ref,buffer=cv2.imencode('.jpg',detection_)
 
@@ -159,6 +169,22 @@ def lop():
         session['video_path'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'],
                                              secure_filename(file.filename))
     return render_template('lop.html', form=form)
+
+@app.route('/drib', methods=['GET','POST'])
+def drib():
+    # Upload File Form: Create an instance for the Upload File Form
+    
+    form = UploadFileForm()
+    if form.validate_on_submit():
+        # Our uploaded video file path is saved here
+
+        file = form.file.data
+        file.save(os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'],
+                               secure_filename(file.filename)))  # Then save the file
+        # Use session storage to save video file path
+        session['video_path'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'],
+                                             secure_filename(file.filename))
+    return render_template('drib.html', form=form)
 
 
 # Rendering the Webcam Rage
@@ -260,6 +286,19 @@ def detect_lop():
     #return Response(generate_frames(path_x='static/files/bikes.mp4'), mimetype='multipart/x-mixed-replace; boundary=frame')
     return Response(generate_lop(path_x = session.get('video_path', None), path_dl = uploads_path),mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/dribbling_pose')
+def detect_drib():
+    session_path = session.get('video_path', None)
+    uploads_folder = "uploads"
+    
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    filename=os.path.basename(session_path)
+    filename=Path(filename).stem
+    uploads_path = os.path.join(dir_path, app.config['UPLOAD_FOLDER'], filename)
+    uploads_path = uploads_path + '_analysed.mp4'
+    #return Response(generate_frames(path_x='static/files/bikes.mp4'), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(generate_dribbling(path_x = session.get('video_path', None), path_dl = uploads_path),mimetype='multipart/x-mixed-replace; boundary=frame')
+
 @app.route('/classify')
 def classify():
     session_path = session.get('video_path', None)
@@ -283,6 +322,11 @@ def clear():
 def clearlop():
     session.clear()
     return redirect("/lop")
+
+@app.route("/cleardrib")
+def cleardrib():
+    session.clear()
+    return redirect("/drib")
 
 @app.route("/clearterra")
 def clearterra():

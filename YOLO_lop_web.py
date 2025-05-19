@@ -126,7 +126,7 @@ def lop_detection(path_x, path_dl):
                     player_alpha=0.2
                     if class_name == 'vball':
                         color=(0, 204, 255)
-                    elif class_name == "attacker" and (int(y2-y1)>300):
+                    elif class_name == "attacker" and (int(y2-y1)>0):
                         color = (222, 82, 175)
                         
                         attacker_midpoint=(center_x,y2)
@@ -148,7 +148,7 @@ def lop_detection(path_x, path_dl):
                         color = (0, 149, 255)
                         deffender_midpoint=(center_x,y2-20)
                         
-                        if conf>0.7:
+                        if conf>0.4:
                           defender_line_array=[(x1,y2-60), (x2,y2)]
                         #   defender_overlay=img.copy()
                         #   defender_overlay=cv2.ellipse(img=defender_overlay, center=deffender_midpoint, axes=(length,minor_axes), angle=0, 

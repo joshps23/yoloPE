@@ -1,0 +1,654 @@
+import tensorflow as tf
+import tensorflow_hub as hub
+import cv2
+import numpy as np
+import random
+import pathlib
+from scipy.signal import find_peaks
+from shapely.geometry import LineString, Polygon
+
+
+video_path = 'IMG_3438.MOV'  # or use 0 for webcam
+dribble = "-"
+shield = "-"
+next_id = 0
+tracked_people = []
+iou_threshold = 0.5
+defender_center = [0.0,0.0]
+body_shield = "-"
+body_polygon = []
+
+max_age = 60
+
+class TrackedPerson:
+    def __init__(self, person_id, bbox, frame_idx, det=None):
+        self.id = person_id
+        self.bbox = bbox  # [x_center, y_center, width, height]
+        self.last_seen = frame_idx
+        self.age = 0  # how many frames it’s been active
+        self.missed_frames = 0
+        self.righthand_y = []
+        self.righthand_bent = False
+        self.hand_dir_count = 0
+        self.lefthand_y = []
+        self.lefthand_dribble = False
+        self.hand_dir_timestamps = []
+        self.dribble_status = False
+        self.righthand_angle = 0
+        self.dribble_non_count = 0
+        self.det = det
+        self.shielding_angle = 0
+        self.shielding = False
+        self.dribble_height = ""
+        self.role = "Player"
+        self.dribbling_hand = None
+        
+        if self.id == 1:
+
+            self.color = (0,255,0)
+        else:
+            self.color = (255,0,0)
+        
+
+    def update(self, bbox, frame_idx, righthand, lefthand, det):
+        self.bbox = bbox
+        self.last_seen = frame_idx
+        kpts = det[:51].reshape(17, 3)
+        dribble_height = 0
+        global tracked_people, defender_center, body_shield, body_polygon
+        feet = kpts[16][0]
+        r_hand = kpts[10][0]
+        l_hand = kpts[9][0]
+        l_waist = kpts[11][0]
+        r_waist = kpts[12][0]
+        r_elbow = kpts[8][0]
+        l_elbow = kpts[7][0]
+        c_lhand = kpts[9][2]
+        c_feet = kpts[16][2]
+        c_rhand = kpts[10][2]
+        c_rwaist = kpts[12][2]
+        c_relbow = kpts[8][0]
+        c_lelbow = kpts[7][0]
+
+        body_polygon = [(kpts[0][1],kpts[0][0]),(kpts[5][1],kpts[5][0]),(kpts[15][1],kpts[15][0]),(kpts[16][1],kpts[16][0]),(kpts[6][1],kpts[6][0])]
+        peaks = []
+        
+        
+        if c_feet < 0.3 or c_rhand < 0.3 or c_rwaist < 0.3 or c_relbow < 0.3 or c_lhand < 0.3 or c_lelbow < 0.3:
+            feet = None
+            r_hand = None
+            r_waist = None
+            l_hand = None
+            c_lelbow = None
+        if feet is not None and r_hand is not None:
+
+            dribble_height = feet - r_hand
+            dribble_height_l = feet - l_hand
+            self.righthand_y.append(dribble_height)
+            self.lefthand_y.append(dribble_height_l)
+        self.righthand_angle = righthand
+        self.missed_frames = 0
+        self.age += 1
+        self.det = det
+        global dribble, shield
+        if self.age > 60:
+            self.dribble_status = False
+            dribble = "-"
+            shield = "-"
+            body_shield = "-"
+            self.shielding = False
+            self.shielding_angle = 0
+            self.age = 0
+            peaks = []
+            peaks_l = []
+            self.righthand_y = []
+            self.lefthand_y = []
+        # print(f'id {self.id} none count is {self.dribble_non_count}')
+        y =  np.array(self.righthand_y)
+        y_l = np.array(self.lefthand_y)
+        peaks, _ = find_peaks(y, prominence=0.02)
+        peaks_l, _ = find_peaks(y_l, prominence=0.02)
+        
+        if len(peaks)>1 or len(peaks_l)>1:
+            
+            self.dribble_status = True
+            self.role = "Attacker"
+            tracked_people[1-self.id].role = "Defender"
+            self.dribble_non_count = 0
+            if len(peaks)>1:
+                self.dribbling_hand = "Right"
+            else:
+                self.dribbling_hand = "Left"
+
+        # if self.righthand_bent == False:
+        #     if righthand is not None and righthand < 140.0:
+        #         if self.dribble_non_count < 10:
+        #             self.righthand_bent = True
+        #             self.hand_dir_count += 1
+        #             self.hand_dir_timestamps.append(frame_idx)
+        #             if len(self.hand_dir_timestamps) > 1:
+        #                 rate = (self.hand_dir_timestamps[-1] - self.hand_dir_timestamps[-2])
+        #                 if rate < 50:
+        #                     self.dribble_status = True
+                            
+        #                     print('shielding arm is left hand andgle')
+        #                 # else:
+        #                 #     self.dribble_status = False
+        #             self.dribble_non_count = 0
+                
+        #     elif righthand is None:
+        #         self.dribble_non_count += 1
+        # if self.righthand_bent == True:
+        #     if righthand is not None and righthand > 150:
+        #         if self.dribble_non_count < 10:
+
+        #             self.righthand_bent = False
+        #             self.hand_dir_count += 1
+        #             self.hand_dir_timestamps.append(frame_idx)
+        #             if len(self.hand_dir_timestamps) > 1:
+        #                 rate = (self.hand_dir_timestamps[-1] - self.hand_dir_timestamps[-2])
+        #                 print(f'rate of id: {self.id} is {rate}')
+        #                 if rate < 50:
+        #                     self.dribble_status = True
+                            
+                        
+        #             self.dribble_non_count = 0
+        #         # else:
+        #         #     self.dribble_status = False
+        #     elif righthand is None:
+        #         self.dribble_non_count += 1
+        
+
+        if self.dribble_status:
+            if self.dribbling_hand == "Right":
+
+                if len(peaks)>1 and r_waist is not None:
+                    if y[peaks[-1]] > r_elbow:
+                        self.dribble_height = 'Good'
+                        print(f'Right hand: {r_hand} and Right elbow {r_elbow}')
+                    else:
+                        self.dribble_height = "Too High"
+            else:
+                if len(peaks_l)>1 and r_waist is not None:
+                    if y_l[peaks_l[-1]] > l_elbow:
+                        self.dribble_height = 'Good'
+                        print(f'Left hand: {l_hand} and Left elbow {l_elbow}')
+                    else:
+                        self.dribble_height = "Too High"
+
+            self.shielding_angle = get_arm_body_angle(self.det,self.dribbling_hand)
+            if self.shielding_angle is not None and self.shielding_angle > 30:
+                # if self.dribble_non_count > 10:
+
+                self.shielding = True
+            else:
+                self.shielding = False
+            if len(tracked_people) > 1:
+                defender_kpts = tracked_people[1-self.id].det[:51].reshape(17, 3)
+                defender_center_x = defender_kpts[0][1]
+                defender_center_y = defender_kpts[12][0]
+                defender_center = (defender_center_y,defender_center_x)
+                body_shield = check_intersect((kpts[10][0],kpts[10][1]),defender_center,body_polygon)
+                print(defender_center)
+        if self.dribble_non_count > 20:
+            self.dribble_non_count = 0        
+            
+
+
+
+        troughs, _ = find_peaks(-y)
+        # print("Peak indices:", peaks)
+        # print("Peak values:", y[peaks])
+        # print("Troughs", y[troughs])
+        
+        # print(f'id: {self.id}: {y}')
+        # print(f'{self.id} hand dir counts : {self.hand_dir_count}')
+        # if len(self.righthand_y) > 2:
+
+        #     if (self.righthand_y[-1] - self.righthand_y[-2]) * (self.righthand_y[-2] - self.righthand_y[-3]) < 0:
+        #         print(f'{self.id} is dribbling')
+        #         print(f'{self.righthand_y[-1] - self.righthand_y[-2]} and {self.righthand_y[-2] - self.righthand_y[-3]}') 
+
+# Define COCO keypoint connections
+KEYPOINT_EDGES = [
+    (0, 1), (1, 3), (0, 2), (2, 4),
+    (0, 5), (5, 7), (7, 9),
+    (0, 6), (6, 8), (8, 10),
+    (5, 6), (5, 11), (6, 12),
+    (11, 13), (13, 15), (12, 14), (14, 16), (11, 12)
+]
+
+# Load MoveNet MultiPose model from TensorFlow Hub
+model = hub.load("https://tfhub.dev/google/movenet/multipose/lightning/1")
+movenet = model.signatures['serving_default']
+
+# Function to preprocess frames
+def preprocess_frame(frame):
+    h, w, _ = frame.shape
+    img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    img_tensor = tf.convert_to_tensor(img_rgb)
+    resized = tf.image.resize_with_pad(img_tensor, 160, 256)
+    input_tensor = tf.expand_dims(tf.cast(resized, tf.int32), axis=0)
+    return input_tensor, h, w
+
+# Function to draw keypoints and skeleton
+def draw_keypoints(frame, keypoints_6x56, height, width, threshold=0.3):
+    righthand_arr = []
+
+    for person in keypoints_6x56:
+    
+        if person[55] < threshold:
+            continue  # skip low confidence persons
+        kpts = person[:51].reshape(17, 3)
+        right_y = kpts[10][0]
+        righthand_arr.append(right_y)
+        # for i, (x, y, conf) in enumerate(kpts):
+        #     if conf > threshold:
+        #         px, py = int(y * height), int(x * width)
+        #         cv2.circle(frame, (px, py), 3, (0, 255, 0), -1)
+        for edge in KEYPOINT_EDGES:
+            p1, p2 = edge
+            y1, x1, c1 = kpts[p1]
+            y2, x2, c2 = kpts[p2]
+
+            if c1 > threshold and c2 > threshold:
+                pt1 = int(x1 * width), int(y1 * height)
+                pt2 = int(x2 * width), int(y2 * height)
+                cv2.line(frame, pt1, pt2, (255, 0, 0), 10)
+            print(righthand_arr)
+    return frame
+
+def calculate_iou(box1, box2):
+    # box = [x_center, y_center, width, height] in normalized format (0 to 1)
+    x1_min = box1[0] - box1[2] / 2
+    y1_min = box1[1] - box1[3] / 2
+    x1_max = box1[0] + box1[2] / 2
+    y1_max = box1[1] + box1[3] / 2
+
+    x2_min = box2[0] - box2[2] / 2
+    y2_min = box2[1] - box2[3] / 2
+    x2_max = box2[0] + box2[2] / 2
+    y2_max = box2[1] + box2[3] / 2
+
+    # Intersection box
+    xi_min = max(x1_min, x2_min)
+    yi_min = max(y1_min, y2_min)
+    xi_max = min(x1_max, x2_max)
+    yi_max = min(y1_max, y2_max)
+
+    inter_w = max(0, xi_max - xi_min)
+    inter_h = max(0, yi_max - yi_min)
+    intersection = inter_w * inter_h
+
+    area1 = (x1_max - x1_min) * (y1_max - y1_min)
+    area2 = (x2_max - x2_min) * (y2_max - y2_min)
+    union = area1 + area2 - intersection
+
+    return intersection / union if union > 0 else 0.0
+
+
+  # max frames to keep unseen track
+
+def update_tracker(detections, frame_idx):
+    global next_id, tracked_people
+    matches = []
+    unmatched_detections = list(range(len(detections)))
+    unmatched_tracks = list(range(len(tracked_people)))
+
+    # Match detections to existing tracks
+    for d_idx, det in enumerate(detections):
+        best_iou = 0
+        best_track_idx = -1
+        for t_idx, track in enumerate(tracked_people):
+
+            iou = calculate_iou(track.bbox, det[51:55])
+            if iou > iou_threshold and iou > best_iou:
+                best_iou = iou
+                best_track_idx = t_idx
+
+        if best_track_idx != -1:
+            kpts = det[:51].reshape(17, 3)
+            tracked_people[best_track_idx].update(det[51:55], frame_idx, get_right_elbow_angle(det), kpts[9][0], det)
+            matches.append((tracked_people[best_track_idx], d_idx))
+            
+        
+
+            unmatched_detections.remove(d_idx)
+            # print('removed d_idx from unmatched_detections')
+        if best_track_idx in unmatched_tracks:
+            unmatched_tracks.remove(best_track_idx)
+            # print('removed best_track from unmatched')
+
+    # Create new tracks for unmatched detections
+    for d_idx in unmatched_detections:
+        new_track = TrackedPerson(next_id, detections[d_idx][51:55], frame_idx, detections[d_idx])
+        if next_id < 2:
+
+            tracked_people.append(new_track)
+            # print('added new traacker')
+
+            next_id += 1
+        else:
+            kpts = detections[d_idx][:51].reshape(17, 3)
+            oldest_index = max(enumerate(tracked_people), key=lambda x: frame_idx - x[1].last_seen)[0]
+            tracked_people[oldest_index].update(detections[d_idx][51:55], frame_idx, get_right_elbow_angle(detections[d_idx]), kpts[9][0], detections[d_idx])
+            unmatched_detections.remove(d_idx)
+            # for i in tracked_people:
+
+            #     print(f'length of tracked_people:{len(tracked_people)}')
+
+    # Remove stale tracks
+    # for t in tracked_people:
+        # current_age = frame_idx-t.last_seen
+        # print(f'current age of {t.id} is {current_age}')
+    # print(f'previous tracked_people:{len(tracked_people)} in frame:{frame_idx}')
+    # tracked_people = [t for t in tracked_people if (frame_idx - t.last_seen) <= max_age]
+
+    return matches
+
+def draw_tracked_keypoints(image, detections, matches, tracked_people, frame_h, frame_w):
+    global dribble, shield, defender_center
+
+    # Define color mapping
+    color_map = {
+        "Good": (0, 255, 0),      # Green
+        "Too High": (0, 0, 255),       # Red
+        "Too Low": (0, 0, 255),   # Red
+        "Not Blocking Defender": (0,0,255),  # Red
+        "Not Observed": (255,255,255)  
+    }
+    status = "Not Observed"
+    # Get color based on status
+    color_dribble = color_map.get(dribble, (255, 255, 255))  # Default to black if status unknown
+    # Get color based on status
+    color_shield = color_map.get(shield, (255, 255, 255))  # Default to black if status unknown
+        # Get color based on status
+    color_bodyshield = color_map.get(body_shield, (255, 255, 255))  # Default to black if status unknown
+    output = image.copy()
+    for tracked_person, d_idx in matches:
+        if tracked_person.dribble_status:
+            dribble = tracked_person.dribble_height
+            if tracked_person.shielding:
+                shield = 'Good'
+            elif tracked_person.shielding == False:
+                shield = 'Too Low'
+
+        track_id = tracked_person.id
+        person = detections[d_idx]
+        # track_id = tracked_people[t_idx].id
+        kpts = person[:51].reshape(17, 3)
+        for i, (y, x, conf) in enumerate(kpts):
+            if conf > 0.3:
+                px, py = int(x * frame_w), int(y * frame_h)
+                cv2.circle(output, (px, py), 3, (0, 255, 0), -1)
+        for edge in KEYPOINT_EDGES:
+            p1, p2 = edge
+            y1, x1, c1 = kpts[p1]
+            y2, x2, c2 = kpts[p2]
+
+            if c1 > 0.3 and c2 > 0.3:
+                pt1 = int(x1 * frame_w), int(y1 * frame_h)
+                pt2 = int(x2 * frame_w), int(y2 * frame_h)
+                if tracked_person.role == "Attacker":
+                    cv2.line(output, pt1, pt2, (0, 255, 0), 4)
+  
+        # if tracked_person.role == "Attacker":
+        #     output = draw_nose_to_bbox_polygon_from_person(output,tracked_person.det,frame_w,frame_h)
+        # Draw ID label at nose
+        x_nose = int(kpts[0][1] * frame_w)
+        y_nose = int(kpts[0][0] * frame_h)
+        cv2.putText(output, f"{tracked_person.role}", (x_nose, y_nose - 10), cv2.FONT_HERSHEY_SIMPLEX, 2.0, tracked_person.color, 6)
+        # cv2.putText(output, f"Sheilding: {tracked_person.shielding}", (x_nose, y_nose + 100), cv2.FONT_HERSHEY_SIMPLEX, 2.0, tracked_person.color, 6)
+        # cv2.putText(output, f"Dribble: {tracked_person.dribble_status}", (x_nose, y_nose + 50), cv2.FONT_HERSHEY_SIMPLEX, 2.0, tracked_person.color, 6)
+        
+    
+    cv2.putText(output, f"Dribble: ", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (255, 255, 255), 6)
+    (text_width, _), _ = cv2.getTextSize("Dribble: ", cv2.FONT_HERSHEY_SIMPLEX, 2.0, 6)
+    cv2.putText(output, f"{dribble}", (100 + text_width, 100), cv2.FONT_HERSHEY_SIMPLEX, 2.0, color_dribble, 6)
+    
+    cv2.putText(output, f"Shielding hand: ", (100, 170), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (255, 255, 255), 6)
+    (text_width, _), _ = cv2.getTextSize("Shielding hand: ", cv2.FONT_HERSHEY_SIMPLEX, 2.0, 6)
+    cv2.putText(output, f"{shield}", (text_width + 100, 170), cv2.FONT_HERSHEY_SIMPLEX, 2.0, color_shield, 6)
+    cv2.putText(output, f"Body Shield: ", (100, 240), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (255, 255, 255), 6)
+    (text_width, _), _ = cv2.getTextSize("Body shield: ", cv2.FONT_HERSHEY_SIMPLEX, 2.0, 6)
+    cv2.putText(output, f"{body_shield}", (text_width+100, 240), cv2.FONT_HERSHEY_SIMPLEX, 2.0, color_bodyshield, 6)
+    return output
+
+
+
+def get_right_elbow_angle(person, conf_threshold=0.3):
+    """
+    Computes the angle at the right elbow (shoulder–elbow–wrist) using MoveNet keypoints.
+
+    Args:
+        person (np.ndarray): 1D array of shape (56,) — one person's keypoints from MoveNet.
+        conf_threshold (float): Minimum confidence required for all 3 keypoints.
+
+    Returns:
+        float or None: Angle in degrees (0–180), or None if confidence is too low.
+    """
+    kpts = person[:51].reshape(17, 3)
+
+    shoulder = kpts[6][:2]
+    elbow = kpts[8][:2]
+    wrist = kpts[10][:2]
+
+    c_shoulder = kpts[6][2]
+    c_elbow = kpts[8][2]
+    c_wrist = kpts[10][2]
+
+    if c_shoulder < conf_threshold or c_elbow < conf_threshold or c_wrist < conf_threshold:
+        return None  # skip unreliable measurements
+
+    vec_a = np.array(shoulder) - np.array(elbow)
+    vec_b = np.array(wrist) - np.array(elbow)
+
+    cosine_angle = np.dot(vec_a, vec_b) / (np.linalg.norm(vec_a) * np.linalg.norm(vec_b))
+    angle_rad = np.arccos(np.clip(cosine_angle, -1.0, 1.0))
+    return np.degrees(angle_rad)
+
+
+def get_arm_body_angle(person,hand,conf_threshold=0.3):
+    """
+    Computes the angle at the right elbow (shoulder–elbow–wrist) using MoveNet keypoints.
+
+    Args:
+        person (np.ndarray): 1D array of shape (56,) — one person's keypoints from MoveNet.
+        conf_threshold (float): Minimum confidence required for all 3 keypoints.
+
+    Returns:
+        float or None: Angle in degrees (0–180), or None if confidence is too low.
+    """
+    kpts = person[:51].reshape(17, 3)
+
+    shoulder = kpts[5][:2]
+    r_shoulder = kpts[6][:2]
+    wrist = kpts[9][:2]
+    r_wrist = kpts[10][:2]
+    waist = kpts[11][:2]
+    r_waist = kpts[12][:2]
+
+    c_shoulder = kpts[5][2]
+    c_rshoulder = kpts[6][2]
+    c_wrist = kpts[9][2]
+    c_rwrist = kpts[10][2]
+    c_waist = kpts[11][2]
+    c_rwaist = kpts[12][2]
+
+    if c_shoulder < conf_threshold or c_wrist < conf_threshold or c_waist < conf_threshold or c_rwrist < conf_threshold or c_rwaist < conf_threshold or c_rshoulder < conf_threshold:
+        return None  # skip unreliable measurements
+
+    if hand == "Right":
+
+        vec_a = np.array(wrist) - np.array(shoulder)
+        vec_b = np.array(waist) - np.array(shoulder)
+    elif hand == "Left":
+        vec_a = np.array(r_wrist) - np.array(r_shoulder)
+        vec_b = np.array(r_waist) - np.array(r_shoulder)
+
+    cosine_angle = np.dot(vec_a, vec_b) / (np.linalg.norm(vec_a) * np.linalg.norm(vec_b))
+    angle_rad = np.arccos(np.clip(cosine_angle, -1.0, 1.0))
+    print(f'Shielding Angle:{np.degrees(angle_rad)}')
+    return np.degrees(angle_rad)
+
+def check_intersect(hand_cp,defender_cp,attacker_body):
+    # Define your two points
+    y1,x1 = hand_cp
+    y2,x2 = tuple(defender_cp)
+    A = (x1, y1)
+    B = (x2, y2)
+
+    # Define the polygon as a list of (x, y) points
+    polygon_points = attacker_body  # etc.
+
+    # Create Shapely objects
+    line = LineString([A, B])
+    polygon = Polygon(polygon_points)
+
+    # Check if line intersects polygon
+    intersects = line.intersects(polygon)
+    if intersects:
+        return "Good"
+    else:
+        return "Not Blocking Defender"
+    
+import cv2
+import numpy as np
+
+def draw_nose_to_bbox_polygon_from_person(image, det, frame_w, frame_h,
+                                          color=(0, 255, 0), alpha=0.4):
+    """
+    Draws a polygon connecting the nose keypoint to the bottom bounding box corners,
+    using normalized bbox coords from person[51:55].
+
+    Parameters:
+        image (np.ndarray): Image to draw on.
+        nose_kpt (tuple): (y, x, conf) for the nose keypoint (kpts[0]).
+        bbox_coords (array-like): [xmin_norm, ymin_norm, width_norm, height_norm] (person[51:55]).
+        frame_w (int): Width of the image.
+        frame_h (int): Height of the image.
+        color (tuple): BGR fill color.
+        alpha (float): Transparency for blending.
+
+    Returns:
+        np.ndarray: Annotated image.
+    """
+
+    kpts = det[:51].reshape(17, 3)
+    y_nose, x_nose, conf = kpts[0]
+    
+
+    # Scale nose coordinates
+    px_nose = int(x_nose * frame_w)
+    py_nose = int(y_nose * frame_h)
+
+    # right ankle and left ankle
+    y_rankle, x_rankle, c_rankle = kpts[16]
+    y_lankle, x_lankle, c_lankle = kpts[15]
+
+    y_rshoulder, x_rshoulder, c_rshoulder = kpts[6]
+    y_lshoulder, x_lshoulder, c_lshoulder = kpts[5]
+
+    px_rshoulder = int(x_rshoulder * frame_w)
+    py_rshoulder = int(y_rshoulder * frame_h)
+
+    px_lshoulder = int(x_lshoulder * frame_w)
+    py_lshoulder = int(y_lshoulder * frame_h)
+
+    px_rankle = int(x_rankle * frame_w)
+    py_rankle = int(y_rankle * frame_h)
+
+    px_lankle = int(x_lankle * frame_w)
+    py_lankle = int(y_lankle * frame_h)
+
+    
+
+    if conf < 0.3 or c_rankle < 0.3 or c_lankle < 0.3 or c_rshoulder < 0.3 or c_lshoulder < 0.3:
+        return image
+
+    # print(f'xmin{xmin} xmax {xmax} ymax {ymax}')
+    # Define triangle: nose, bottom-left, bottom-right
+    pts = np.array([[(px_nose, py_nose), (px_lshoulder, py_lshoulder), (px_lankle, py_lankle), (px_rankle, py_rankle), (px_rshoulder, py_rshoulder)]], dtype=np.int32)
+
+    # Draw filled polygon with transparency
+    overlay = image.copy()
+    # cv2.rectangle(overlay, (x_rankle,y_rankle), (x_lankle, y_lankle), (0,255,0), 2)
+    cv2.fillPoly(overlay, pts, color)
+    output = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
+
+    return output
+
+
+
+# Open video
+def dribbling_pose(path_x, path_dl):
+    
+  cap = cv2.VideoCapture(path_x)
+
+  tracked_bbox = None  # Store previous frame's bbox
+
+  right_wrist_ys = []  # Track right wrist y-coordinates
+
+  frame_width=int(cap.get(3))
+  frame_height=int(cap.get(4))
+
+  out=cv2.VideoWriter(path_dl, cv2.VideoWriter_fourcc('M', 'J', 'P','G'), 10, (int(cap.get(3)), int(cap.get(4))))
+
+  frame_idx = 0
+  while cap.isOpened():
+      ret, frame = cap.read()
+      if not ret:
+          out.release()
+          file_to_rem = pathlib.Path(path_x)
+          file_to_rem.unlink()
+          return
+
+
+
+      input_tensor, h, w = preprocess_frame(frame)
+      keypoints = movenet(input_tensor)['output_0'].numpy()[0]
+
+      valid_persons = [p for p in keypoints if p[55] > 0.3]
+      
+
+      matches = update_tracker(valid_persons, frame_idx)
+      frame = draw_tracked_keypoints(frame, valid_persons, matches, tracked_people, h, w)
+
+      # best_iou = 0
+      # selected_person = None
+
+      # for person in valid_persons:
+      #     current_bbox = person[51:55]  # [x_center, y_center, width, height]
+      #     if tracked_bbox is not None:
+      #         iou = calculate_iou(tracked_bbox, current_bbox)
+      #         if iou > best_iou:
+      #             best_iou = iou
+      #             selected_person = person
+      #     else:
+      #         selected_person = valid_persons[0]
+      #         break
+
+      # if selected_person is not None:
+      #     tracked_bbox = selected_person[51:55]
+      #     kpts = selected_person[:51].reshape(17, 3)
+      #     y = kpts[10][1]  # Right wrist y
+      #     y_pixel = int(y * h)
+      #     right_wrist_ys.append(y_pixel)
+      # else:
+      #     right_wrist_ys.append(np.nan)
+
+
+      for i in tracked_people:
+          print(f'id: {i.id} last seen {frame_idx - i.last_seen}')
+      # frame = draw_keypoints(frame, keypoints, h, w)
+      frame_idx += 1
+
+      out.write(frame)
+      yield frame
+
+      # cv2.imshow("MoveNet MultiPose", frame)
+      # if cv2.waitKey(1) & 0xFF == ord('q'):
+      #     break
+
+  # cap.release()
+  # cv2.destroyAllWindows()

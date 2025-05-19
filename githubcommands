@@ -5,3 +5,6 @@ git commit -m "first commit"
 git branch -M main
 git remote add origin https://github.com/joshps23/yoloPE.git
 git push -u origin main
+
+python3 -m venv .pyenv
+source .pyenv/bin/activate
