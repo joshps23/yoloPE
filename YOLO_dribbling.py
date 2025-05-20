@@ -180,14 +180,14 @@ class TrackedPerson:
             if self.dribbling_hand == "Right":
 
                 if len(peaks)>1:
-                    if y[peaks[-1]] < 0.3:
+                    if y[peaks[-1]] < 0.20:
                         self.dribble_height = 'Good'
                         
                     else:
                         self.dribble_height = "Too High"
             else:
                 if len(peaks_l)>1:
-                    if y_l[peaks_l[-1]] < 0.25:
+                    if y_l[peaks_l[-1]] < 0.20:
                         self.dribble_height = 'Good'
                         
                     else:
@@ -405,7 +405,7 @@ def draw_tracked_keypoints(image, detections, matches, tracked_people, frame_h, 
         # cv2.putText(output, f"Sheilding: {tracked_person.shielding}", (x_nose, y_nose + 100), cv2.FONT_HERSHEY_SIMPLEX, 2.0, tracked_person.color, 6)
         # cv2.putText(output, f"Dribble: {tracked_person.dribble_status}", (x_nose, y_nose + 50), cv2.FONT_HERSHEY_SIMPLEX, 2.0, tracked_person.color, 6)
         
-    output = draw_rounded_rectangle_alpha(output, (50,30), (600,300),10,(0,128,0),alpha=0.5)
+    # output = draw_rounded_rectangle_alpha(output, (50,30), (600,300),10,(0,128,0),alpha=0.5)
     cv2.putText(output, f"Dribble: ", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
     (text_width, _), _ = cv2.getTextSize("Dribble: ", cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)
     cv2.putText(output, f"{dribble}", (100 + text_width, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.0, color_dribble, 2)
@@ -657,34 +657,34 @@ def dribbling_pose(path_x, path_dl):
 
   
   while cap.isOpened():
-      # start_time = time.time()
-      # t0 = time.time()
+    #   start_time = time.time()
+    #   t0 = time.time()
       ret, frame = cap.read()
       if not ret:
           # out.release()
           file_to_rem = pathlib.Path(path_x)
           file_to_rem.unlink()
           return
-      # t1 = time.time()
+    #   t1 = time.time()
 
 
       input_tensor, h, w = preprocess_frame(frame)
-      # t2 = time.time()
+    #   t2 = time.time()
       keypoints = movenet(input_tensor)['output_0'].numpy()[0]
-      # t3 = time.time()
+    #   t3 = time.time()
 
       valid_persons = [p for p in keypoints if p[55] > 0.3]
       valid_persons = sorted(valid_persons, key=lambda x: -x[55])[:2]
-      # t4 = time.time()
+    #   t4 = time.time()
       
 
       matches = update_tracker(valid_persons, frame_idx)
-      # t5 = time.time()
+    #   t5 = time.time()
 
       
           
       frame = draw_tracked_keypoints(frame, valid_persons, matches, tracked_people, h, w)
-      # t6 = time.time()
+    #   t6 = time.time()
 
       # best_iou = 0
       # selected_person = None
@@ -715,20 +715,20 @@ def dribbling_pose(path_x, path_dl):
       
 
       # out.write(frame)
-      # t7 = time.time()
+    #   t7 = time.time()
 
       # Print profiling
-      # print(f"""
-      # Frame {frame_idx}
-      # Read Frame       : {(t1 - t0)*1000:.1f} ms
-      # Preprocessing    : {(t2 - t1)*1000:.1f} ms
-      # Inference        : {(t3 - t2)*1000:.1f} ms
-      # Post-processing  : {(t4 - t3)*1000:.1f} ms
-      # Tracking         : {(t5 - t4)*1000:.1f} ms
-      # Drawing          : {(t6 - t5)*1000:.1f} ms
-      # Write Frame      : {(t7 - t6)*1000:.1f} ms
-      # Total Frame Time : {(t7 - start_time)*1000:.1f} ms
-      # """)
+    #   print(f"""
+    #   Frame {frame_idx}
+    #   Read Frame       : {(t1 - t0)*1000:.1f} ms
+    #   Preprocessing    : {(t2 - t1)*1000:.1f} ms
+    #   Inference        : {(t3 - t2)*1000:.1f} ms
+    #   Post-processing  : {(t4 - t3)*1000:.1f} ms
+    #   Tracking         : {(t5 - t4)*1000:.1f} ms
+    #   Drawing          : {(t6 - t5)*1000:.1f} ms
+    #   Write Frame      : {(t7 - t6)*1000:.1f} ms
+    #   Total Frame Time : {(t7 - start_time)*1000:.1f} ms
+    #   """)
 
       # frame = draw_keypoints(frame, keypoints, h, w)
       frame_idx += 1
