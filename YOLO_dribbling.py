@@ -101,8 +101,8 @@ class TrackedPerson:
         self.missed_frames = 0
         self.age += 1
         self.det = det
-        self.righthand_y = self.righthand_y[-30:]
-        self.lefthand_y = self.lefthand_y[-30:]
+        self.righthand_y = self.righthand_y[-60:]
+        self.lefthand_y = self.lefthand_y[-60:]
         global dribble, shield
         if self.age > 90:
             self.dribble_status = False
@@ -120,15 +120,15 @@ class TrackedPerson:
         peaks_l, _ = find_peaks(y_l, prominence=0.03)
         self.peak_counts = len(peaks) + len(peaks_l)
         
-        if self.peak_counts > 1 and self.peak_counts > tracked_people[1-self.id].peak_counts:
-            if len(peaks_l)>0:
-              print(y_l[peaks_l])
+        most_active_person = max(tracked_people, key=lambda p: p.peak_counts, default=None)
+        if self is most_active_person and self.peak_counts > 1:
+            
             self.dribble_status = True
             new_role = "Attacker"
             
             self.rolehistory.append(new_role)
-            
-            tracked_people[1-self.id].rolehistory.append("Defender")
+            if len(tracked_people) > 1:
+                tracked_people[1-self.id].rolehistory.append("Defender")
             self.dribble_non_count = 0
 
             self.role = Counter(self.rolehistory).most_common(1)[0][0]
@@ -249,7 +249,7 @@ def preprocess_frame(frame):
     h, w, _ = frame.shape
     img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     img_tensor = tf.convert_to_tensor(img_rgb)
-    resized = tf.image.resize_with_pad(img_tensor,128, 192)
+    resized = tf.image.resize_with_pad(img_tensor,160,224)
     input_tensor = tf.expand_dims(tf.cast(resized, tf.int32), axis=0)
     return input_tensor, h, w
 
@@ -674,7 +674,7 @@ def dribbling_pose(path_x, path_dl):
     #   t3 = time.time()
 
       valid_persons = [p for p in keypoints if p[55] > 0.3]
-      valid_persons = sorted(valid_persons, key=lambda x: -x[55])[:2]
+    #   valid_persons = sorted(valid_persons, key=lambda x: -x[55])[:2]
     #   t4 = time.time()
       
 
