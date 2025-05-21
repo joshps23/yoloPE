@@ -16,9 +16,9 @@ shielding_hand_history = deque(maxlen=10)
 shield = "-"
 next_id = 0
 tracked_people = []
-iou_threshold = 0.7
+iou_threshold = 0.5
 defender_center = [0.0,0.0]
-body_shield = 0
+body_shield = "-"
 body_polygon = []
 frame_idx = 1
 
@@ -37,6 +37,8 @@ class TrackedPerson:
         self.hand_dir_count = 0
         self.lefthand_y = []
         self.lefthand_dribble = False
+        self.elbow_r = []
+        self.elbow_l = []
         self.hand_dir_timestamps = []
         self.dribble_status = False
         self.righthand_angle = 0
@@ -87,22 +89,29 @@ class TrackedPerson:
         
         if c_feet < 0.3 or c_rhand < 0.3 or c_rwaist < 0.3 or c_relbow < 0.3 or c_lhand < 0.3 or c_lelbow < 0.3:
             feet = None
+            r_elbow = None
             r_hand = None
             r_waist = None
             l_hand = None
             c_lelbow = None
-        if feet is not None and r_hand is not None:
+        if feet is not None and r_hand is not None and r_elbow is not None and l_hand is not None and feet_l is not None:
 
             dribble_height = feet - r_hand
+            r_elbow_height = feet - r_elbow
             dribble_height_l = feet_l - l_hand
+            l_elbow_height = feet_l - l_elbow
             self.righthand_y.append(dribble_height)
+            self.elbow_r.append(r_elbow_height)
             self.lefthand_y.append(dribble_height_l)
+            self.elbow_l.append(l_elbow_height)
         # self.righthand_angle = righthand
         self.missed_frames = 0
         self.age += 1
         self.det = det
         self.righthand_y = self.righthand_y[-60:]
+        self.elbow_r = self.elbow_r[-60:]
         self.lefthand_y = self.lefthand_y[-60:]
+        self.elbow_l = self.elbow_l[-60:]
         global dribble, shield
         if self.age > 90:
             self.dribble_status = False
@@ -115,9 +124,11 @@ class TrackedPerson:
 
         # print(f'id {self.id} none count is {self.dribble_non_count}')
         y =  np.array(self.righthand_y)
+        elbow_r_y = np.array(self.elbow_r)
         y_l = np.array(self.lefthand_y)
-        peaks, _ = find_peaks(y, prominence=0.03)
-        peaks_l, _ = find_peaks(y_l, prominence=0.03)
+        elbow_l_y = np.array(self.elbow_l)
+        peaks, _ = find_peaks(y, prominence=0.05)
+        peaks_l, _ = find_peaks(y_l, prominence=0.05)
         self.peak_counts = len(peaks) + len(peaks_l)
         
         most_active_person = max(tracked_people, key=lambda p: p.peak_counts, default=None)
@@ -127,11 +138,20 @@ class TrackedPerson:
             new_role = "Attacker"
             
             self.rolehistory.append(new_role)
-            if len(tracked_people) > 1:
-                tracked_people[1-self.id].rolehistory.append("Defender")
-            self.dribble_non_count = 0
+            for p in tracked_people:
+                if p != self:
+                    p.rolehistory.append("Defender")
 
-            self.role = Counter(self.rolehistory).most_common(1)[0][0]
+            # if len(tracked_people) > 1:
+            #     tracked_people[1-self.id].rolehistory.append("Defender")
+            self.dribble_non_count = 0
+            
+            attacker = max(tracked_people, key=lambda p: p.rolehistory.count("Attacker"), default=None)
+            if self is attacker and Counter(self.rolehistory).most_common(1)[0][0] == "Attacker" and self.rolehistory.count("Attacker") > 2:
+                self.role = "Attacker"
+                for p in tracked_people:
+                    if p != self:
+                        p.role = "Defender"
             if len(peaks)>1:
                 self.dribbling_hand = "Right"
             else:
@@ -180,18 +200,18 @@ class TrackedPerson:
             if self.dribbling_hand == "Right":
 
                 if len(peaks)>1:
-                    if y[peaks[-1]] < 0.20:
+                    if y[peaks[-1]] < elbow_r_y[peaks[-1]]:
                         self.dribble_height = 'Good'
                         
                     else:
-                        self.dribble_height = "Too High"
+                        self.dribble_height = "Bounce lower"
             else:
                 if len(peaks_l)>1:
-                    if y_l[peaks_l[-1]] < 0.20:
+                    if y_l[peaks_l[-1]] < elbow_l_y[peaks_l[-1]]:
                         self.dribble_height = 'Good'
                         
                     else:
-                        self.dribble_height = "Too High"
+                        self.dribble_height = "Bounce lower"
 
             self.shielding_angle = get_arm_body_angle(self.det,self.dribbling_hand)
             if self.shielding_angle is not None and self.shielding_angle > 30:
@@ -201,16 +221,23 @@ class TrackedPerson:
                 
                 self.shielding = True
             else:
-                new_shielding_hand = "Too Low"
+                new_shielding_hand = "Non-dribbling hands higher"
                 shielding_hand_history.append(new_shielding_hand)
                 self.shielding = False
             shield = Counter(shielding_hand_history).most_common(1)[0][0]
+
+
             if len(tracked_people) > 1 and frame_idx % 3 == 0:
-                defender_kpts = tracked_people[1-self.id].kpts
-                defender_center_x = defender_kpts[0][1]
-                defender_center_y = defender_kpts[12][0]
-                defender_center = (defender_center_y,defender_center_x)
-                check_intersect((kpts[10][0],kpts[10][1]),defender_center,body_polygon)
+                # defender_kpts = tracked_people[1-self.id].kpts
+                # defender_center_x = defender_kpts[0][1]
+                # defender_center_y = defender_kpts[12][0]
+                # defender_center = (defender_center_y,defender_center_x)
+                # check_intersect((kpts[10][0],kpts[10][1]),defender_center,body_polygon)
+                facing, angle1, angle2 = are_facing_each_other(tracked_people[0].kpts,tracked_people[1].kpts)
+                if facing != True:
+                    body_shield = "Good"
+                else:
+                    body_shield ="Turn shoulder to defender"
                 
         if self.dribble_non_count > 20:
             self.dribble_non_count = 0        
@@ -351,18 +378,18 @@ def draw_tracked_keypoints(image, detections, matches, tracked_people, frame_h, 
     # Define color mapping
     color_map = {
         "Good": (0, 255, 0),      # Green
-        "Too High": (0, 0, 255),       # Red
-        "Too Low": (0, 0, 255),   # Red
-        "Not Blocking Defender": (0,0,255),  # Red
-        "Not Observed": (255,255,255)  
+        "Bounce lower": (0, 0, 255),       # Red
+        "Non-dribbling hands higher": (0, 0, 255),   # Red
+        "Turn shoulder to defender": (0,0,255),  # Red
+        "Not Observed": (0,255,255)  
     }
     status = "Not Observed"
     # Get color based on status
-    color_dribble = color_map.get(dribble, (255, 255, 255))  # Default to black if status unknown
+    color_dribble = color_map.get(dribble, (0, 255, 255))  # Default to black if status unknown
     # Get color based on status
-    color_shield = color_map.get(shield, (255, 255, 255))  # Default to black if status unknown
+    color_shield = color_map.get(shield, (0, 255, 255))  # Default to black if status unknown
         # Get color based on status
-    color_bodyshield = color_map.get(body_shield, (255, 255, 255))  # Default to black if status unknown
+    color_bodyshield = color_map.get(body_shield, (0, 255, 255))  # Default to black if status unknown
     output = image.copy()
     
         
@@ -406,16 +433,26 @@ def draw_tracked_keypoints(image, detections, matches, tracked_people, frame_h, 
         # cv2.putText(output, f"Dribble: {tracked_person.dribble_status}", (x_nose, y_nose + 50), cv2.FONT_HERSHEY_SIMPLEX, 2.0, tracked_person.color, 6)
         
     # output = draw_rounded_rectangle_alpha(output, (50,30), (600,300),10,(0,128,0),alpha=0.5)
-    cv2.putText(output, f"Dribble: ", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
+    cv2.putText(output, f"Dribble: ", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 4)
+    cv2.putText(output, f"Dribble: ", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
     (text_width, _), _ = cv2.getTextSize("Dribble: ", cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)
+    
+    cv2.putText(output, f"{dribble}", (100 + text_width, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 4)
     cv2.putText(output, f"{dribble}", (100 + text_width, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.0, color_dribble, 2)
     
-    cv2.putText(output, f"Shielding hand: ", (100, 170), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
+    cv2.putText(output, f"Shielding hand: ", (100, 170), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 4)
+    cv2.putText(output, f"Shielding hand: ", (100, 170), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
     (text_width, _), _ = cv2.getTextSize("Shielding hand: ", cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)
+    
+    cv2.putText(output, f"{shield}", (text_width + 100, 170), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 4)
     cv2.putText(output, f"{shield}", (text_width + 100, 170), cv2.FONT_HERSHEY_SIMPLEX, 1.0, color_shield, 2)
-    cv2.putText(output, f"Body Shield: ", (100, 240), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
+    
+    cv2.putText(output, f"Body Shield: ", (100, 240), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 4)
+    cv2.putText(output, f"Body Shield: ", (100, 240), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
     (text_width, _), _ = cv2.getTextSize("Body shield: ", cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)
-    cv2.putText(output, f"{(body_shield/frame_idx):.2f} %", (text_width+100, 240), cv2.FONT_HERSHEY_SIMPLEX, 1.0, color_bodyshield, 2)
+    
+    cv2.putText(output, f"{body_shield}", (text_width+100, 240), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 4)
+    cv2.putText(output, f"{body_shield}", (text_width+100, 240), cv2.FONT_HERSHEY_SIMPLEX, 1.0, color_bodyshield, 2)
     return output
 
 
@@ -640,6 +677,49 @@ def draw_rounded_rectangle_alpha(img, top_left, bottom_right, radius, color_bgr,
 
 
 
+def get_facing_vector(kpts):
+    """Returns the facing direction (unit vector) from left to right shoulder."""
+    l_shoulder = np.array(kpts[5][:2])
+    r_shoulder = np.array(kpts[6][:2])
+    facing_vec = r_shoulder - l_shoulder
+    norm = np.linalg.norm(facing_vec)
+    return facing_vec / norm if norm != 0 else np.zeros(2)
+
+def get_torso_center(kpts):
+    """Returns center of torso using mid-point of shoulders."""
+    l_shoulder = np.array(kpts[5][:2])
+    r_shoulder = np.array(kpts[6][:2])
+    return (l_shoulder + r_shoulder) / 2
+
+def angle_between_vectors(v1, v2):
+    """Returns angle in degrees between vectors v1 and v2."""
+    cos_angle = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+    angle_rad = np.arccos(np.clip(cos_angle, -1.0, 1.0))
+    return np.degrees(angle_rad)
+
+def are_facing_each_other(kpts1, kpts2, threshold=45):
+    # Get facing directions
+    face1 = get_facing_vector(kpts1)
+    face2 = get_facing_vector(kpts2)
+
+    # Get torso centers
+    center1 = get_torso_center(kpts1)
+    center2 = get_torso_center(kpts2)
+
+    # Get vectors pointing to each other
+    to_2_from_1 = center2 - center1
+    to_1_from_2 = center1 - center2
+
+    # Get angles between each person's facing and the direction of the other
+    angle1 = angle_between_vectors(face1, to_2_from_1)
+    angle2 = angle_between_vectors(face2, to_1_from_2)
+
+    # Facing each other if both angles are near 0° (or ≤ threshold)
+    return angle1 < threshold and angle2 < threshold, angle1, angle2
+
+
+
+
 
 # Open video
 def dribbling_pose(path_x, path_dl):
@@ -653,7 +733,7 @@ def dribbling_pose(path_x, path_dl):
   frame_width=int(cap.get(3))
   frame_height=int(cap.get(4))
 
-  # out=cv2.VideoWriter(path_dl, cv2.VideoWriter_fourcc(*'MJPG'), 10, (int(cap.get(3)), int(cap.get(4))))
+#   out=cv2.VideoWriter(path_dl, cv2.VideoWriter_fourcc(*'MJPG'), 10, (int(cap.get(3)), int(cap.get(4))))
 
   
   while cap.isOpened():
@@ -661,7 +741,7 @@ def dribbling_pose(path_x, path_dl):
     #   t0 = time.time()
       ret, frame = cap.read()
       if not ret:
-          # out.release()
+        #   out.release()
           file_to_rem = pathlib.Path(path_x)
           file_to_rem.unlink()
           return
@@ -674,7 +754,7 @@ def dribbling_pose(path_x, path_dl):
     #   t3 = time.time()
 
       valid_persons = [p for p in keypoints if p[55] > 0.3]
-    #   valid_persons = sorted(valid_persons, key=lambda x: -x[55])[:2]
+      valid_persons = sorted(valid_persons, key=lambda x: -x[55])[:2]
     #   t4 = time.time()
       
 
@@ -714,7 +794,7 @@ def dribbling_pose(path_x, path_dl):
           
       
 
-      # out.write(frame)
+    #   out.write(frame)
     #   t7 = time.time()
 
       # Print profiling
