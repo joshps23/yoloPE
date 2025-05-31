@@ -107,7 +107,7 @@ stack-data==0.6.3
 sympy==1.12.1
 tensorboard==2.17.0
 tensorboard-data-server==0.7.2
-tensorflow==2.19.0
+tensorflow
 tensorflow_hub
 thop==0.1.1.post2209072238
 torch==2.3.1
