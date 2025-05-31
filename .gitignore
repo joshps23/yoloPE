@@ -11,3 +11,5 @@ raw_videos
 testpy
 runs
 archive
+test_dribbling.py
+dribbling_vid
