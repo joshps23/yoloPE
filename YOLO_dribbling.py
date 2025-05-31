@@ -8,7 +8,6 @@ from scipy.signal import find_peaks
 from shapely.geometry import LineString, Polygon
 from collections import deque, Counter
 import time
-import math
 from ultralytics import YOLO
 
 
@@ -1185,10 +1184,7 @@ def dribbling_pose(path_x, path_dl):
               
                 for box in boxes:
                     cls = int(box.cls[0])
-                    conf=math.ceil((box.conf[0]*100))/100
-                  
-                    if conf < 0.5:
-                        continue
+
                   
                     if cls == 2:
                       
