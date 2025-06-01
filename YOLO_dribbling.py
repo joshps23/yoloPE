@@ -320,7 +320,7 @@ def preprocess_frame(frame):
     img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     img_tensor = tf.convert_to_tensor(img_rgb)
     # resized = tf.image.resize_with_pad(img_tensor,160,224)
-    resized = tf.image.resize_with_pad(img_tensor,256,256)
+    resized = tf.image.resize_with_pad(img_tensor,256,384)
     input_tensor = tf.expand_dims(tf.cast(resized, tf.int32), axis=0)
     return input_tensor, h, w
 
